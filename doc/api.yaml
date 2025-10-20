@@ -1,273 +1,792 @@
-openapi: 3.0.0
-servers:
-  - url: "http://localhost:3000"
+openapi: 3.0.3
+
 info:
-  title: Fantastic Coffee (decaffeinated)
-  description: Fantastic Coffee (decaffeinated), the skeleton project for Web and Software architecture course
-  version: 1.0.0
+  title: WASAText API
+  description: API per il servizio di messaggistica "WASAText" del corso WASA.
+  version: "1.0.0"
+
+servers:
+  - url: /
+
+security: # Regole di sicurezza globali
+  - bearerAuth: [] # Definito in components/securitySchemes/bearerAuth
+
 paths:
-  /status:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-    get:
-      tags: ["General"]
-      operationId: getStatusMessage
-      summary: Get status message for the user about issues / updates
+
+  /session:
+
+    post:
+      tags: ["Login"]
+      summary: Logs in the user
       description: |-
-        The response contains a status message meant for the user. It might
-        contains information about current technical issues, update messages
-        or general information.
-      responses:
-        "200":
-          description: Status message available
+        If the user does not exist, it will be created, and an identifier is returned.
+        If the user exists, the user identifier is returned.
+      operationId: doLogin
+
+      security: [] # Per questa operazione non è richiesta l'autenticazione
+
+      requestBody: # name
+        description: Dettagli dell'utente per il login
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+
+      responses: # identifier
+        '201':
+          description: User log-in action successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StatusInfo"
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
+                $ref: '#/components/schemas/LoginResponse'
 
-  /:
-    get:
-      tags: ["Group 1"]
-      operationId: index
-      summary: Get an index
-      description: |-
-        This is an example of an index API description
-      responses:
-        "200":
-          description: Successful
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-  /context:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-    post:
-      tags: ["Group 1"]
-      operationId: getContext
-      summary: Another API example
-      description: |-
-        Example description 2
-      responses:
-        "200":
-          description: Request ok
-          headers:
-            X-Access-Token:
-              description: Access token for authenticated requests
-              schema: { type: string }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-  /authenticated:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-    get:
-      tags: ["Group 2"]
-      operationId: getAuthenticatedExample
-      summary: Get an endpoint with authentication
-      description: |-
-        Get an endpoint with auth
-      security:
-        - LegacyAuth: []
-        - AppToken: []
-      responses:
-        "200":
-          description: Logout successful
-        "500": { $ref: "#/components/responses/InternalServerError" }
+  /settings/username:
 
-  /pictures/{cat}:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-      - $ref: "#/components/parameters/cat"
-    get:
-      tags: ["Cat pictures"]
-      operationId: getCatFromPicture
-      summary: Example of a parameter in URL
-      description: |-
-        Example of a parameter in URL
-      security:
-        - LegacyAuth: []
-      responses:
-        "200":
-          description: Student picture found
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-              example: Picture binary file
-        "404":
-          description: Student picture not found
-        "500": { $ref: "#/components/responses/InternalServerError" }
-
-
-  /autofeeder/{cat}:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-      - $ref: "#/components/parameters/cat"
     put:
-      tags: ["Autofeeder"]
-      operationId: createCatAutofeeder
-      summary: Example of PUT operation
-      security:
-        - LegacyAuth: []
-      responses:
-        "200":
-          description: Auto feed enabled
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-    delete:
-      tags: ["Autofeeder"]
-      operationId: deleteCatAutofeeder
-      summary: Example of DELETE operation
-      security:
-        - LegacyAuth: []
-      responses:
-        "200":
-          description: Auto feed disabled
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
+      tags: ["User & Settings"]
+      summary: Set my username
+      description: Aggiorna il nome utente dell'utente autenticato.
+      operationId: setMyUserName
 
-  /session/login:
-    parameters:
-      - $ref: "#/components/parameters/XAppBuild"
-      - $ref: "#/components/parameters/XAppVersion"
-      - $ref: "#/components/parameters/XAppLanguage"
-      - $ref: "#/components/parameters/XAppPlatform"
-    post:
-      tags: ["Session management"]
-      operationId: login
-      summary: Log-in into system
-      description: |-
-        Perform a log-in action using username and password credentials.
-        Returns a token which can be used in authenticated requests.
-      requestBody:
+      requestBody: # username
+        description: Il nuovo username desiderato.
+        required: true
         content:
-          application/x-www-form-urlencoded:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetUsernameRequest'
+
+      responses:
+        '200': # User
+          description: Username aggiornato con successo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400': # Error
+          description: Formato username non valido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409': # Error
+          description: Username già in uso da un altro utente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /settings/photo:
+
+    put:
+      tags: ["User & Settings"]
+      summary: Set my profile photo
+      description: Aggiorna l'URL della foto profilo dell'utente.
+      operationId: setMyPhoto
+
+      requestBody: # photoUrl
+        description: Il nuovo URL della foto.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPhotoRequest'
+
+      responses:
+        '200': # User
+          description: Foto aggiornata con successo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400': # Error 
+          description: L'URL fornito non è valido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users:
+
+    get:
+      tags: ["User & Settings"]
+      summary: Search users
+      description: Cerca utenti in base al loro username.
+      operationId: searchUsers 
+
+      parameters: # Parametro in query (?username=...)
+        - name: username
+          in: query
+          required: true
+          description: Stringa da cercare nel nome utente.
+          schema:
+            type: string
+            minLength: 1
+
+      responses:
+        '200': # Lista di User
+          description: Lista di utenti che corrispondono alla ricerca.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /conversations:
+
+    get:
+      tags: ["Conversations"]
+      summary: Get my conversations
+      description: Ritorna la lista delle conversazioni dell'utente, ordinate per data dell'ultimo messaggio.
+      operationId: getMyConversations
+
+      responses:
+        '200': # Lista di ConversationSummary
+          description: Una lista di anteprime delle conversazioni.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConversationSummary'
+    
+    post:
+      tags: ["Conversations"]
+      summary: Start a new 1-to-1 conversation
+      description: Inizia una nuova conversazione con un altro utente.
+      operationId: startConversation 
+
+      requestBody: # userId (utente con cui chattare)
+        description: L'ID dell'utente con cui iniziare la chat.
+        required: true
+        content:
+          application/json:
             schema:
               type: object
               properties:
-                userid:
+                userId:
                   type: string
-                  pattern: '^[a-zA-Z0-9]+$'
-                  minLength: 3
-                  maxLength: 255
-                password:
-                  type: string
-                  pattern: '^.*?$'
-                  minLength: 8
-                  maxLength: 255
-      responses:
-        "200":
-          description: Login successful
-          headers:
-            X-Access-Token:
-              description: Access token for authenticated requests
-              schema: { type: string }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403":
-          description: Login failed
-          headers:
-            X-Message:
-              description: Error message
-              schema: { type: string }
-        "500": { $ref: "#/components/responses/InternalServerError" }
+                  description: "ID dell'utente con cui avviare la chat."
+              required: ["userId"]
 
+      responses:
+        '201': # Ritorna la conversazione intera
+          description: Conversazione creata o già esistente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/groups:
+
+    post:
+      tags: ["Groups"]
+      summary: Create a new group
+      description: Crea una nuova conversazione di gruppo con più utenti.
+      operationId: createGroup 
+
+      requestBody: # Dati per il nuovo gruppo
+        description: Nome del gruppo e lista dei membri da includere.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewGroupRequest'
+
+      responses:
+        '201': # Ritorna la conversazione (gruppo) creata
+          description: Gruppo creato con successo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{convId}:
+
+    get:
+      tags: ["Conversations"]
+      summary: Get a single conversation
+      description: Ritorna i dettagli e tutti i messaggi di una singola conversazione.
+      operationId: getConversation
+
+      parameters: # Parametro nel path
+        - name: convId
+          in: path
+          required: true
+          description: ID della conversazione da recuperare.
+          schema:
+            type: string
+      
+      responses:
+        '200': # Dettaglio conversazione
+          description: Dettagli e messaggi della conversazione.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '403': # Error (non autorizzato)
+          description: Non fai parte di questa conversazione.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404': # Error (non trovata)
+          description: Conversazione non trovata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{convId}/messages:
+
+    post:
+      tags: ["Messages"]
+      summary: Send a new message
+      description: Invia un nuovo messaggio (testo o foto) in una conversazione, o risponde a un messaggio.
+      operationId: sendMessage
+
+      parameters: # Parametro nel path
+        - name: convId
+          in: path
+          required: true
+          description: ID della conversazione in cui inviare il messaggio.
+          schema:
+            type: string
+
+      requestBody: # Dati nuovo messaggio (testo/foto)
+        description: Contenuto del messaggio.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewMessageRequest'
+
+      responses:
+        '201': # Messaggio creato
+          description: Messaggio inviato con successo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '403': # Error (non sei nel gruppo)
+          description: Non fai parte di questa conversazione.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{convId}/forwarded-messages:
+
+    post:
+      tags: ["Messages"]
+      summary: Forward a message
+      description: Inoltra un messaggio esistente in questa conversazione.
+      operationId: forwardMessage
+
+      parameters: # Parametro nel path
+        - name: convId
+          in: path
+          required: true
+          description: ID della conversazione di destinazione.
+          schema:
+            type: string
+
+      requestBody: # ID messaggio da inoltrare
+        description: ID del messaggio originale da inoltrare.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForwardMessageRequest'
+
+      responses:
+        '201': # Messaggio inoltrato
+          description: Messaggio inoltrato con successo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+        '404': # Error (non trovato)
+          description: Messaggio originale o conversazione non trovati.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages/{msgId}:
+
+    delete:
+      tags: ["Messages"]
+      summary: Delete a message
+      description: Cancella un messaggio inviato dall'utente.
+      operationId: deleteMessage
+
+      parameters: # Parametro nel path
+        - name: msgId
+          in: path
+          required: true
+          description: ID del messaggio da cancellare.
+          schema:
+            type: string
+
+      responses:
+        '204': # Successo (Senza contenuto)
+          description: Messaggio cancellato con successo. (No Content)
+        '403': # Error (non sei il mittente)
+          description: Non sei il mittente di questo messaggio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /messages/{msgId}/reactions:
+
+    post:
+      tags: ["Messages"]
+      summary: React to a message
+      description: Aggiunge una reazione (commento/emoji) a un messaggio.
+      operationId: commentMessage
+
+      parameters: # Parametro nel path
+        - name: msgId
+          in: path
+          required: true
+          description: ID del messaggio a cui reagire.
+          schema:
+            type: string
+
+      requestBody: # Emoji
+        description: L'emoji della reazione.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewReactionRequest'
+
+      responses:
+        '201': # Reazione creata
+          description: Reazione aggiunta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reaction'
+
+  /messages/{msgId}/reactions/{reactionId}:
+
+    delete:
+      tags: ["Messages"]
+      summary: Remove a reaction
+      description: Rimuove una propria reazione da un messaggio.
+      operationId: uncommentMessage
+
+      parameters: # Parametri nel path
+        - name: msgId
+          in: path
+          required: true
+          description: ID del messaggio.
+          schema:
+            type: string
+        - name: reactionId
+          in: path
+          required: true
+          description: ID della reazione da rimuovere.
+          schema:
+            type: string
+
+      responses:
+        '204': # Successo (Senza contenuto)
+          description: Reazione rimossa con successo.
+        '403': # Error (non è la tua reazione)
+          description: Non sei il proprietario di questa reazione.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{convId}/name:
+
+    put:
+      tags: ["Groups"]
+      summary: Set group name
+      description: Aggiorna il nome di un gruppo.
+      operationId: setGroupName
+
+      parameters: # Parametro nel path
+        - name: convId
+          in: path
+          required: true
+          description: ID del gruppo.
+          schema:
+            type: string
+
+      requestBody: # Nuovo nome gruppo
+        description: Il nuovo nome del gruppo.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetGroupNameRequest'
+
+      responses:
+        '200': # Dettaglio gruppo aggiornato
+          description: Nome aggiornato.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+        '403': # Error (non sei nel gruppo)
+          description: Non sei un membro di questo gruppo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /conversations/{convId}/photo:
+
+    put:
+      tags: ["Groups"]
+      summary: Set group photo
+      description: Aggiorna l'URL della foto di un gruppo.
+      operationId: setGroupPhoto
+
+      parameters: # Parametro nel path
+        - name: convId
+          in: path
+          required: true
+          description: ID del gruppo.
+          schema:
+            type: string
+
+      requestBody: # Nuovo URL foto
+        description: Il nuovo URL della foto.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPhotoRequest'
+
+      responses:
+        '200': # Dettaglio gruppo aggiornato
+          description: Foto aggiornata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+        '403': # Error (non sei nel gruppo)
+          description: Non sei un membro di questo gruppo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{convId}/members:
+
+    post:
+      tags: ["Groups"]
+      summary: Add a user to a group
+      description: Aggiunge un utente a una conversazione di gruppo.
+      operationId: addToGroup
+
+      parameters: # Parametro nel path
+        - name: convId
+          in: path
+          required: true
+          description: ID del gruppo.
+          schema:
+            type: string
+
+      requestBody: # userId da aggiungere
+        description: L'ID dell'utente da aggiungere.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMemberRequest'
+              
+      responses:
+        '201': # Successo (Membro aggiunto)
+          description: Membro aggiunto con successo.
+        '403': # Error (non puoi aggiungere)
+          description: Non sei autorizzato ad aggiungere membri a questo gruppo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404': # Error (utente/gruppo non trovato)
+          description: Utente o gruppo non trovato.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{convId}/members/me:
+
+    delete:
+      tags: ["Groups"]
+      summary: Leave a group
+      description: L'utente autenticato abbandona un gruppo.
+      operationId: leaveGroup
+
+      parameters: # Parametro nel path
+        - name: convId
+          in: path
+          required: true
+          description: ID del gruppo da abbandonare.
+          schema:
+            type: string
+
+      responses:
+        '204': # Successo (Senza contenuto)
+          description: Gruppo abbandonato con successo.
+        '403': # Error (non sei nel gruppo)
+          description: Non sei un membro di questo gruppo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
-  schemas:
-    StatusInfo:
-      title: Status Info
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-            - info
-            - warning
-            - critical
-            - ""
-        title: { type: string }
-        message: { type: string }
-        url: { type: string }
-
-  responses:
-    Unauthorized:
-      description: The access token is missing or it's expired
-    BadRequest:
-      description: The request was not compliant with the documentation (eg. missing fields, etc)
-    InternalServerError:
-      description: The server encountered an internal error. Further info in server logs
 
   securitySchemes:
-    LegacyAuth:
-      type: apiKey
-      in: header
-      name: X-App-Token
-      description: |-
-        App session token value. This value is sent by the server in the login
-        and session refresh APIs.
 
-  parameters:
-    XAppVersion:
-      schema:
-        type: string
-        pattern: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
-        minLength: 1
-        maxLength: 10
-      name: X-App-Version
-      in: header
-      required: true
-      description: App human readable version ("semantic version" format)
-      allowEmptyValue: false
-    XAppBuild:
-      schema: { type: integer }
-      name: X-App-Build
-      in: header
-      required: true
-      description: App build number
-      allowEmptyValue: false
-    XAppLanguage:
-      schema:
-        type: string
-        pattern: '^[a-z]{2}([-_][A-Z]{2})?$'
-        minLength: 2
-        maxLength: 5
-      name: X-App-Language
-      in: header
-      required: true
-      description: App language in ISO 639-1 format
-      allowEmptyValue: false
-    XAppPlatform:
-      schema:
-        type: string
-        enum: [ios, android]
-      name: X-App-Platform
-      in: header
-      required: true
-      description: App operating system / platform
-      allowEmptyValue: false
-    cat:
-      schema:
-        type: string
-        pattern: '^[a-zA-Z]+$'
-        minLength: 3
-        maxLength: 10
-      name: cat
-      in: path
-      required: true
-      description: Cat
-      allowEmptyValue: false
+    bearerAuth: 
+      type: http
+      scheme: bearer
+      bearerFormat: "string"
+      description: "L'identificativo utente ottenuto dal login, prefissato da 'Bearer '."
+
+  schemas:
+
+    Error: # Schema per errore generico
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Si è verificato un errore."
+      required: ["message"]
+
+    LoginRequest: # Schema per POST /session (input)
+      description: "Oggetto per la richiesta di login, come da specifiche"
+      type: object
+      properties:
+        name:
+          type: string
+          example: Maria
+          pattern: '^.*?$'
+          minLength: 3
+          maxLength: 16
+      required: ["name"]
+      
+    LoginResponse: # Schema per POST /session (output)
+      description: "Risposta del login, come da specifiche"
+      type: object
+      properties:
+        identifier:
+          type: string
+          example: "abcdef012345"
+      required: ["identifier"]
+
+    User: # Schema per l'oggetto Utente 
+      description: "Rappresenta un utente"
+      type: object
+      properties:
+        id:
+          type: string
+          example: "user-123"
+        username:
+          type: string
+          example: "Maria"
+        photoUrl:
+          type: string
+          format: uri
+          example: "https://example.com/photos/maria.png"
+      required: ["id", "username"]
+      
+    SetUsernameRequest: # Schema per PUT /settings/username 
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 16
+          example: "Maria99"
+      required: ["username"]
+
+    SetPhotoRequest: # Schema per PUT /settings/photo 
+      type: object
+      properties:
+        photoUrl:
+          type: string
+          format: uri
+          example: "https://example.com/photos/new_photo.png"
+      required: ["photoUrl"]
+
+    ConversationSummary: # Schema per l'anteprima in lista chat (GET /conversations)
+      description: "Anteprima di una conversazione per la lista principale"
+      type: object
+      properties:
+        id:
+          type: string
+          example: "conv-456"
+        name:
+          type: string
+          description: "Nome del gruppo o dell'altro utente"
+          example: "Gruppo Lavoro"
+        photoUrl:
+          type: string
+          format: uri
+          example: "https://example.com/photos/gruppo.png"
+        latestMessageSnippet:
+          type: string
+          description: "Testo dell'ultimo messaggio o 'Foto'"
+          example: "Ciao, tutto bene?"
+        latestMessageTimestamp:
+          type: string
+          format: date-time
+          example: "2024-10-20T10:30:00Z"
+      required: ["id", "name", "latestMessageSnippet", "latestMessageTimestamp"]
+
+    Conversation: # Schema per la chat singola (GET /conversations/{convId})
+      description: "Dettaglio completo di una conversazione con tutti i messaggi"
+      type: object
+      properties:
+        id:
+          type: string
+          example: "conv-4D"
+        name:
+          type: string
+          example: "Gruppo Lavoro"
+        photoUrl:
+          type: string
+          format: uri
+          example: "https://example.com/photos/gruppo.png"
+        isGroup:
+          type: boolean
+          example: true
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+      required: ["id", "name", "isGroup", "members", "messages"]
+      
+    NewGroupRequest: # Schema per POST /conversations/groups
+      type: object
+      properties:
+        groupName:
+          type: string
+          minLength: 1
+          example: "Amici"
+        memberIds:
+          type: array
+          items:
+            type: string
+          example: ["user-123", "user-789"]
+      required: ["groupName", "memberIds"]
+
+    AddMemberRequest: # Schema per POST /conversations/{convId}/members 
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "user-abc"
+      required: ["userId"]
+      
+    SetGroupNameRequest: # Schema per PUT /conversations/{convId}/name 
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: "Nuovo Nome Gruppo"
+      required: ["name"]
+
+    Message: # Schema per l'oggetto Messaggio 
+      description: "Rappresenta un singolo messaggio"
+      type: object
+      properties:
+        id:
+          type: string
+          example: "msg-789"
+        sender:
+          $ref: '#/components/schemas/User'
+        content:
+          type: string
+          description: "Testo del messaggio o URL della foto"
+          example: "Ciao!"
+        contentType:
+          type: string
+          enum: ["text", "photo"]
+          example: "text"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-10-20T10:30:00Z"
+        status:
+          type: string
+          enum: ["sent", "received", "read"]
+          description: "Stato per i messaggi inviati (1 o 2 spunte)"
+          example: "read"
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reaction'
+      required: ["id", "sender", "content", "contentType", "timestamp"]
+      
+    NewMessageRequest: # Schema per POST /conversations/{convId}/messages 
+      description: "Corpo per inviare un nuovo messaggio"
+      type: object
+      properties:
+        text:
+          type: string
+          example: "Ciao, come va?"
+        photoUrl:
+          type: string
+          format: uri
+          example: "https://example.com/photos/image.jpg"
+        replyToMsgId:
+          type: string
+          description: "ID del messaggio a cui si sta rispondendo (opzionale)"
+          example: "msg-788"
+      oneOf: # testo o foto, non entrambi
+        - required: ["text"]
+        - required: ["photoUrl"]
+        
+    ForwardMessageRequest: # Schema per POST /conversations/{convId}/forwarded-messages 
+      type: object
+      properties:
+        originalMessageId:
+          type: string
+          example: "msg-123"
+      required: ["originalMessageId"]
+      
+    Reaction: # Schema per l'oggetto Reazione 
+      description: "Una reazione ad un messaggio"
+      type: object
+      properties:
+        id:
+          type: string
+          example: "reaction-abc"
+        emoji:
+          type: string
+          example: "👍"
+        user:
+          $ref: '#/components/schemas/User'
+      required: ["id", "emoji", "user"]
+
+    NewReactionRequest: # Schema per POST /messages/{msgId}/reactions 
+      type: object
+      properties:
+        emoji:
+          type: string
+          example: "👍"
+          maxLength: 4 # (lunghezza emoji)
+      required: ["emoji"]
