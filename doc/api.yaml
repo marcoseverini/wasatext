@@ -577,7 +577,7 @@ components:
         name:
           type: string
           example: Maria
-          pattern: '^.*?$'
+          pattern: '^.*?$' # Non vuoto
           minLength: 3
           maxLength: 16
       required: ["name"]
