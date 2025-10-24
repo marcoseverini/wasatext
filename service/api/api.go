@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http" // Strumenti per gestire l'HTTP
 
-	"wasatext/service/database" // Il nostro database
+	"github.com/marcoseverini/wasatext/service/database" // Il nostro database
 
 	"github.com/julienschmidt/httprouter" // router HTTP di terze parti
 	"github.com/sirupsen/logrus" // Libreria di logging strutturato
