@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors" // Per usare errors.Is
 	"net/http"
-	"wasatext/service/database" // Importa per ErrUsernameTaken
+	"github.com/marcoseverini/wasatext/service/database" // Importa per ErrUsernameTaken
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/mattn/go-sqlite3"
 )
 
 // setMyUserName è l'handler per PUT /settings/username
