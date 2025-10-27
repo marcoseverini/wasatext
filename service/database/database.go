@@ -4,7 +4,7 @@ import (
 	"database/sql" // Libreria per parlare con SQL
 	"errors" // Libreria per gestire gli errori
 	"fmt" // Libreria per formattare gli errori
-
+	"github.com/mattn/go-sqlite3" // Driver SQLite per Go
 	"github.com/google/uuid" // Pacchetto per generare ID univoci
 )
 
@@ -13,6 +13,7 @@ type AppDatabase interface { // Interfaccia per comunicare con il database
 	DoLogin(username string) (User, error) 
 	GetUserByName(username string) (User, error)
 	CreateUser(username string) (User, error)
+	SetUsername(userID string, newUsername string) (User, error)
 }
 
 type appdbimpl struct {
@@ -100,3 +101,42 @@ func (db *appdbimpl) DoLogin(username string) (User, error) {
 	return user, fmt.Errorf("error during login process: %w", err) // Altri errori
 }
 
+// ErrUsernameTaken è un errore specifico che restituiamo quando si viola il vincolo UNIQUE.
+var ErrUsernameTaken = errors.New("username already taken")
+
+// SetUsername aggiorna il nome utente per un dato userID.
+func (db *appdbimpl) SetMyUsername(userID string, newUsername string) (User, error) {
+	// Prende l'ID utente dell'utente che vuole cambiare nome e il nuovo nome desiderato
+	// Se l'utente non esiste, restituisce un errore
+	// Se il nuovo nome è già in uso, restituisce un errore
+	// Altrimenti aggiorna il nome utente e restituisce l'utente aggiornato
+
+	// Prepariamo la struttura User vuota per il ritorno
+	var updatedUser User
+
+	// Comando SQL per aggiornare il nome utente
+    sqlStmt := `UPDATE users SET username = ? WHERE id = ?`
+
+    // Eseguiamo l'aggiornamento
+    _, err := db.c.Exec(sqlStmt, newUsername, userID)
+
+    if err != nil {
+        // Controlliamo se l'errore è dovuto al vincolo UNIQUE
+        var sqliteErr *sqlite3.Error 
+        if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrConstraint && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+             return updatedUser, ErrUsernameTaken // Restituisce il nostro errore specifico
+        }
+        // Altrimenti, è un altro errore SQL
+        return updatedUser, fmt.Errorf("error updating username: %w", err)
+    }
+
+    // Se l'aggiornamento è andato a buon fine, recuperiamo i dati aggiornati
+    // (ID non cambia, username è quello nuovo)
+    updatedUser.ID = userID
+    updatedUser.Username = newUsername
+
+    // Potremmo fare una SELECT qui per recuperare anche photoUrl se esistesse,
+    // ma per ora questo basta.
+
+    return updatedUser, nil // Restituisci l'utente aggiornato e nessun errore
+}

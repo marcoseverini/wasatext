@@ -30,7 +30,7 @@ type _router struct {
 	db         database.AppDatabase 
 }
 
-// Costruttore dell'API (chiamato da main.go)
+// Costruttore dell'API 
 func New(cfg Config) (Router, error) {
 
 	// Validazione delle dipendenze
@@ -57,6 +57,7 @@ func New(cfg Config) (Router, error) {
 	// Registriamo le rotte HTTP
 
 	router.POST("/session", rt.doLogin)
+	router.PUT("/settings/username", rt.setMyUserName)
 	
 	// Qui, in futuro, aggiungeremo tutte le altre rotte:
 	// router.PUT("/settings/username", rt.setMyUserName)

@@ -17,13 +17,13 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 	var req LoginRequest 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "JSON non valido: "+err.Error(), http.StatusBadRequest)
+		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido: "+err.Error())
 		return 
 	}
 
 	// Controlliamo che il nome rispetti le regole del nostro api.yaml (min: 3, max: 16)
 	if len(req.Name) < 3 || len(req.Name) > 16 {
-		http.Error(w, "Nome utente non valido (deve essere tra 3 e 16 caratteri)", http.StatusBadRequest)
+		rt.sendErrorResponse(w, http.StatusBadRequest, "Nome utente non valido (deve essere tra 3 e 16 caratteri)")
 		return 
 	}
 
@@ -31,7 +31,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 	// Riceviamo indietro l'utente (esistente o appena creato), oppure un errore
 	user, err := rt.db.DoLogin(req.Name)
 	if err != nil {
-		http.Error(w, "Errore interno del server: "+err.Error(), http.StatusInternalServerError)
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno del server: "+err.Error())
 		return
 	}
 
@@ -47,3 +47,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 	// Trasformiamo la risposta res da struct LoginResponse a JSON e la inviamo al client
 	_ = json.NewEncoder(w).Encode(res)
 }
+
+
+
+

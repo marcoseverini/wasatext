@@ -24,12 +24,12 @@ executable during the build).
 package main
 
 import (
+	"github.com/marcoseverini/wasatext/service/api"
+	"github.com/marcoseverini/wasatext/service/database"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/marcoseverini/wasatext/service/api"
-	"github.com/marcoseverini/wasatext/service/database"
 	"github.com/ardanlabs/conf"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
