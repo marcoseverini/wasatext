@@ -13,7 +13,7 @@ type AppDatabase interface { // Interfaccia per comunicare con il database
 	DoLogin(username string) (User, error) 
 	GetUserByName(username string) (User, error)
 	CreateUser(username string) (User, error)
-	SetUsername(userID string, newUsername string) (User, error)
+	SetMyUsername(userID string, newUsername string) (User, error)
 }
 
 type appdbimpl struct {
