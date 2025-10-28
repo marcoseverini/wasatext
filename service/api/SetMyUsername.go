@@ -42,7 +42,7 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	// Aggiorniamo il nome utente nel database
-	updatedUser, err := rt.db.SetUsername(userID, newUsername)
+	updatedUser, err := rt.db.SetMyUsername(userID, newUsername)
 	if err != nil {
 		// Controlliamo se l'errore è quello specifico di "nome già preso"
 		if errors.Is(err, database.ErrUsernameTaken) {
