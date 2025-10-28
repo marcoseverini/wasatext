@@ -5,7 +5,7 @@ import (
 	"errors" // Per usare errors.Is
 	"net/http"
 	"github.com/marcoseverini/wasatext/service/database" // Importa per ErrUsernameTaken
-
+	"net/url"
 	"github.com/julienschmidt/httprouter"
 	
 )
@@ -58,5 +58,44 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // Codice 200 OK
 	// Rispondiamo con l'intera struct User aggiornata (che include ID e nuovo Username)
+	_ = json.NewEncoder(w).Encode(updatedUser)
+}
+
+// setMyPhoto è l'handler per PUT /settings/photo
+func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// Simulazione autenticazione (come in setMyUserName)
+	userID := r.Header.Get("X-User-ID")
+	if userID == "" {
+		rt.sendErrorResponse(w, http.StatusUnauthorized, "Autenticazione richiesta (simulata tramite X-User-ID)")
+		return
+	}
+
+	// Leggi il JSON body nella struct corretta
+	var req SetPhotoRequest // Usa la struct corretta
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido: "+err.Error())
+		return
+	}
+
+	// VALIDAZIONE URI (come da api.yaml format: uri)
+	photoURL := req.PhotoURL // Accedi al campo corretto
+	_, err = url.ParseRequestURI(photoURL)
+	if err != nil || photoURL == "" { // Controlla anche che non sia vuoto
+		rt.sendErrorResponse(w, http.StatusBadRequest, "URL della foto non valido: "+err.Error()) // Risposta 400
+		return
+	}
+
+	// Chiama il database per aggiornare la foto
+	updatedUser, err := rt.db.SetMyPhoto(userID, photoURL) // Usa la funzione corretta
+	if err != nil {
+		// Gestione errore generico del database
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno durante l'aggiornamento della foto: "+err.Error())
+		return
+	}
+
+	// Invia la risposta di successo (200 OK con l'utente aggiornato)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(updatedUser)
 }

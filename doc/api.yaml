@@ -78,7 +78,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   /settings/photo:
-
+ 
     put:
       tags: ["User & Settings"]
       summary: Set my profile photo

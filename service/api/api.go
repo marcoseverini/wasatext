@@ -58,6 +58,7 @@ func New(cfg Config) (Router, error) {
 
 	router.POST("/session", rt.doLogin)
 	router.PUT("/settings/username", rt.setMyUserName)
+	router.PUT("/settings/photo", rt.setMyPhoto)
 	
 	// Qui, in futuro, aggiungeremo tutte le altre rotte:
 	// router.PUT("/settings/username", rt.setMyUserName)

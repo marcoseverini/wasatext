@@ -14,6 +14,7 @@ type AppDatabase interface { // Interfaccia per comunicare con il database
 	GetUserByName(username string) (User, error)
 	CreateUser(username string) (User, error)
 	SetMyUsername(userID string, newUsername string) (User, error)
+	SetMyPhoto(userID string, photoURL string) (User, error) 
 }
 
 type appdbimpl struct {
@@ -31,7 +32,8 @@ func New(db *sql.DB) (AppDatabase, error) {
 	// Comando SQL per creare la tabella utenti, se non esiste
 	sqlStmt := `CREATE TABLE IF NOT EXISTS users (
 		id TEXT NOT NULL PRIMARY KEY,
-		username TEXT NOT NULL UNIQUE
+		username TEXT NOT NULL UNIQUE,
+		photoUrl TEXT
 	);`
 	_, err := db.Exec(sqlStmt) // Esegue il comando SQL sul database
 	if err != nil {
@@ -139,4 +141,27 @@ func (db *appdbimpl) SetMyUsername(userID string, newUsername string) (User, err
     // ma per ora questo basta.
 
     return updatedUser, nil // Restituisci l'utente aggiornato e nessun errore
+}
+
+// SetMyPhoto aggiorna l'URL della foto profilo per un dato userID.
+func (db *appdbimpl) SetMyPhoto(userID string, photoURL string) (User, error) {
+	// Eseguiamo l'aggiornamento
+	sqlStmt := `UPDATE users SET photoUrl = ? WHERE id = ?` // Usa photoUrl
+	_, err := db.c.Exec(sqlStmt, photoURL, userID)
+	if err != nil {
+		return User{}, fmt.Errorf("error updating user profile photo: %w", err)
+	}
+
+	// Se l'aggiornamento è andato a buon fine, DOBBIAMO recuperare l'utente completo
+	// per poterlo restituire (incluso lo username che non avevamo).
+	// Potremmo creare una funzione GetUserByID, ma per ora facciamo la query qui.
+	var updatedUser User
+	err = db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE id = ?`, userID).
+		Scan(&updatedUser.ID, &updatedUser.Username, &updatedUser.PhotoURL) // Aggiunto Scan per photoUrl
+	if err != nil {
+		
+		return User{}, fmt.Errorf("error fetching updated user data after photo update: %w", err)
+	}
+
+	return updatedUser, nil // Restituisci l'utente completo e aggiornato
 }

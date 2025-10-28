@@ -18,6 +18,12 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+// SetUsernameRequest è la struttura per la richiesta di aggiornamento del nome utente
 type SetUsernameRequest struct {
 	Username string `json:"username"`
+}
+
+// SetPhotoRequest è la struttura per leggere il JSON da PUT /settings/photo
+type SetPhotoRequest struct {
+	PhotoURL string `json:"photoUrl"` // Corretto: Tag 'json', nome campo JSON 'photoUrl'
 }
