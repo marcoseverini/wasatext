@@ -55,8 +55,8 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	// Inviamo la risposta di successo
-	w.WriteHeader(http.StatusOK) // Codice 200 OK
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // Codice 200 OK
 	// Rispondiamo con l'intera struct User aggiornata (che include ID e nuovo Username)
 	_ = json.NewEncoder(w).Encode(updatedUser)
 }
