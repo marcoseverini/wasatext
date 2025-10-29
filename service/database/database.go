@@ -61,7 +61,7 @@ func (db *appdbimpl) GetUserByName(username string) (User, error) {
 	var user User
 
 	err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE username = ?`, username).
-		Scan(&user.ID, &user.Username, &user.PhotoURL)
+        Scan(&user.ID, &user.Username, &nullablePhotoURL)
 
 	if err != nil {
 		return user, err
@@ -84,7 +84,7 @@ func (db *appdbimpl) GetUserByID(userID string) (User, error) {
 
 
     err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE id = ?`, userID).
-        Scan(&user.ID, &user.Username, &user.PhotoURL) 
+        Scan(&user.ID, &user.Username, &nullablePhotoURL) 
 
     if err != nil {
         // Se QueryRow non trova l'utente, restituisce sql.ErrNoRows.
