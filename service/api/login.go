@@ -40,8 +40,8 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 	}
 
 	// Impostiamo il codice di stato a "201 Created" 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	
 	// Trasformiamo la risposta res da struct LoginResponse a JSON e la inviamo al client
 	_ = json.NewEncoder(w).Encode(res)
