@@ -8,9 +8,11 @@ import (
 	"github.com/google/uuid" // Pacchetto per generare ID univoci
 )
 
-type AppDatabase interface { // Interfaccia per comunicare con il database
+// Interfaccia per comunicare con il database
+type AppDatabase interface { 
 	Ping() error 
 	DoLogin(username string) (User, error) 
+	GetUserByID(userID string) (User, error)
 	GetUserByName(username string) (User, error)
 	CreateUser(username string) (User, error)
 	SetMyUsername(userID string, newUsername string) (User, error)
@@ -23,7 +25,6 @@ type appdbimpl struct {
 
 func New(db *sql.DB) (AppDatabase, error) { 
 	// Prende in input una connessione al database, restituisce un'istanza di AppDatabase
-	// Viene chiamato all'avvio del server 
 
 	if db == nil { // Verifica che la connessione al database non sia nulla
 		return nil, errors.New("database is required when building a AppDatabase")
@@ -36,6 +37,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		photoUrl TEXT
 	);`
 	_, err := db.Exec(sqlStmt) // Esegue il comando SQL sul database
+
 	if err != nil {
 		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
@@ -46,7 +48,8 @@ func New(db *sql.DB) (AppDatabase, error) {
 }
 
 func (db *appdbimpl) Ping() error {
-	return db.c.Ping() // inoltra il comando Ping alla connessione con il database
+	// Inoltra il comando Ping alla connessione con il database per verificare che sia attiva
+	return db.c.Ping() 
 }
 
 func (db *appdbimpl) GetUserByName(username string) (User, error) {
@@ -55,13 +58,31 @@ func (db *appdbimpl) GetUserByName(username string) (User, error) {
 
 	var user User
 
-	err := db.c.QueryRow(`SELECT id, username FROM users WHERE username = ?`, username).
-		Scan(&user.ID, &user.Username)
+	err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE username = ?`, username).
+		Scan(&user.ID, &user.Username, &user.PhotoURL)
 
 	if err != nil {
 		return user, err
 	}
 	return user, nil
+}
+
+func (db *appdbimpl) GetUserByID(userID string) (User, error) {
+	// Prende un userID e restituisce l'utente corrispondente dal database
+	// Se l'utente non esiste, restituisce un errore
+
+    var user User
+    err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE id = ?`, userID).
+        Scan(&user.ID, &user.Username, &user.PhotoURL) 
+
+    if err != nil {
+        // Se QueryRow non trova l'utente, restituisce sql.ErrNoRows.
+        // Lo restituiamo così com'è. Altrimenti, è un altro errore SQL.
+        return User{}, err // Restituisce struct vuota e l'errore
+    }
+
+    // Utente trovato, restituisci l'utente completo e nessun errore
+    return user, nil
 }
 
 func (db *appdbimpl) CreateUser(username string) (User, error) {
@@ -75,9 +96,8 @@ func (db *appdbimpl) CreateUser(username string) (User, error) {
 		Username: username,
 	}
 
-	// Comando SQL per inserire un nuovo utente nel database
 	sqlStmt := `INSERT INTO users (id, username) VALUES (?, ?)` 
-	_, err := db.c.Exec(sqlStmt, user.ID, user.Username)
+	_, err := db.c.Exec(sqlStmt, user.ID, user.Username) 
 
 	if err != nil {
 		return user, err
@@ -103,65 +123,56 @@ func (db *appdbimpl) DoLogin(username string) (User, error) {
 	return user, fmt.Errorf("error during login process: %w", err) // Altri errori
 }
 
-// ErrUsernameTaken è un errore specifico che restituiamo quando si viola il vincolo UNIQUE.
+// Errore specifico che restituiamo quando si viola il vincolo UNIQUE.
 var ErrUsernameTaken = errors.New("username already taken")
 
-// SetUsername aggiorna il nome utente per un dato userID.
 func (db *appdbimpl) SetMyUsername(userID string, newUsername string) (User, error) {
 	// Prende l'ID utente dell'utente che vuole cambiare nome e il nuovo nome desiderato
 	// Se l'utente non esiste, restituisce un errore
 	// Se il nuovo nome è già in uso, restituisce un errore
 	// Altrimenti aggiorna il nome utente e restituisce l'utente aggiornato
 
-	// Prepariamo la struttura User vuota per il ritorno
-	var updatedUser User
-
 	// Comando SQL per aggiornare il nome utente
     sqlStmt := `UPDATE users SET username = ? WHERE id = ?`
-
-    // Eseguiamo l'aggiornamento
-    _, err := db.c.Exec(sqlStmt, newUsername, userID)
+    _, err := db.c.Exec(sqlStmt, newUsername, userID) // Eseguiamo l'aggiornamento
 
     if err != nil {
         // Controlliamo se l'errore è dovuto al vincolo UNIQUE
-        var sqliteErr *sqlite3.Error 
+        var sqliteErr *sqlite3.Error
         if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrConstraint && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-             return updatedUser, ErrUsernameTaken // Restituisce il nostro errore specifico
-        }
+			// Restituiamo User{} (struct vuota) e l'errore specifico
+			return User{}, ErrUsernameTaken
+		}
         // Altrimenti, è un altro errore SQL
-        return updatedUser, fmt.Errorf("error updating username: %w", err)
+        return User{}, fmt.Errorf("error updating username: %w", err)
     }
 
     // Se l'aggiornamento è andato a buon fine, recuperiamo i dati aggiornati
-    // (ID non cambia, username è quello nuovo)
-    updatedUser.ID = userID
-    updatedUser.Username = newUsername
-
-    // Potremmo fare una SELECT qui per recuperare anche photoUrl se esistesse,
-    // ma per ora questo basta.
+	updatedUser, err := db.GetUserByID(userID)
+    if err != nil {
+        return User{}, fmt.Errorf("error fetching updated user data after username update: %w", err)
+    }
 
     return updatedUser, nil // Restituisci l'utente aggiornato e nessun errore
 }
 
-// SetMyPhoto aggiorna l'URL della foto profilo per un dato userID.
+
 func (db *appdbimpl) SetMyPhoto(userID string, photoURL string) (User, error) {
-	// Eseguiamo l'aggiornamento
-	sqlStmt := `UPDATE users SET photoUrl = ? WHERE id = ?` // Usa photoUrl
+	// Prende l'ID utente dell'utente che vuole cambiare la foto profilo e la nuova URL desiderata
+
+	// Comando SQL per aggiornare la foto profilo
+	sqlStmt := `UPDATE users SET photoUrl = ? WHERE id = ?` 
 	_, err := db.c.Exec(sqlStmt, photoURL, userID)
 	if err != nil {
 		return User{}, fmt.Errorf("error updating user profile photo: %w", err)
 	}
 
-	// Se l'aggiornamento è andato a buon fine, DOBBIAMO recuperare l'utente completo
-	// per poterlo restituire (incluso lo username che non avevamo).
-	// Potremmo creare una funzione GetUserByID, ma per ora facciamo la query qui.
-	var updatedUser User
-	err = db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE id = ?`, userID).
-		Scan(&updatedUser.ID, &updatedUser.Username, &updatedUser.PhotoURL) // Aggiunto Scan per photoUrl
-	if err != nil {
-		
-		return User{}, fmt.Errorf("error fetching updated user data after photo update: %w", err)
-	}
+	// Se l'aggiornamento è andato a buon fine, recuperiamo i dati aggiornati
+	updatedUser, err := db.GetUserByID(userID)
+    if err != nil {
+        // Se non riusciamo a leggere l'utente appena aggiornato, c'è un problema serio.
+        return User{}, fmt.Errorf("error fetching updated user data after photo update: %w", err)
+    }
 
-	return updatedUser, nil // Restituisci l'utente completo e aggiornato
+    return updatedUser, nil // Restituisci l'utente completo e aggiornato
 }

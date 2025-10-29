@@ -1,5 +1,11 @@
 package api
 
+// Struttura generica per gli errori JSON
+// Corrisponde a #/components/schemas/Error
+type ErrorResponse struct {
+	Message string `json:"message"`
+}
+
 // il JSON in entrata dalla richiesta POST /session
 // Corrisponde a #/components/schemas/LoginRequest
 type LoginRequest struct {
@@ -12,18 +18,14 @@ type LoginResponse struct {
 	Identifier string `json:"identifier"`
 }
 
-// ErrorResponse è una struttura generica per gli errori JSON
-// Corrisponde a #/components/schemas/Error
-type ErrorResponse struct {
-	Message string `json:"message"`
-}
-
-// SetUsernameRequest è la struttura per la richiesta di aggiornamento del nome utente
+// Il JSON in entrata dalla richiesta PUT /settings/username
+// Corrisponde a #/components/schemas/SetUsernameRequest
 type SetUsernameRequest struct {
 	Username string `json:"username"`
 }
 
-// SetPhotoRequest è la struttura per leggere il JSON da PUT /settings/photo
+// Il JSON in entrata dalla richiesta PUT /settings/photo
+// Corrisponde a #/components/schemas/SetPhotoRequest
 type SetPhotoRequest struct {
 	PhotoURL string `json:"photoUrl"` // Corretto: Tag 'json', nome campo JSON 'photoUrl'
 }

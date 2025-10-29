@@ -15,6 +15,3 @@ log:
 #  writetimeout: 5s
 #  shutdowntimeout: 5s
 #  behindproxy: false
-
-db:
-  filename: var/wasatext.db

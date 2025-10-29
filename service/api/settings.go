@@ -1,17 +1,19 @@
 package api
 
 import (
-	"encoding/json"
-	"errors" // Per usare errors.Is
-	"net/http"
-	"github.com/marcoseverini/wasatext/service/database" // Importa per ErrUsernameTaken
-	"net/url"
-	"github.com/julienschmidt/httprouter"
-	
+	"encoding/json" // Libreria per codificare/decodificare JSON
+	"errors" // Libreria per gestire gli errori
+	"net/http" // Strumenti per gestire l'HTTP
+	"github.com/marcoseverini/wasatext/service/database" // Il nostro database
+	"net/url" // Libreria per gestire gli URL
+	"github.com/julienschmidt/httprouter" // router HTTP di terze parti
 )
 
-// setMyUserName è l'handler per PUT /settings/username
+// Handler per PUT /settings/username
 func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// r è la richiesta JSON in entrata
+	// w è la risposta JSON in uscita
+	// _ sono i parametri dell'URL 
 
 	// Otteniamo l'ID utente dall'autenticazione (simulata per ora)
 	// In futuro, questo ID verrà estratto dal token Bearer da un middleware.
@@ -24,8 +26,7 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	// leggiamo la richiesta JSON
-	// e la trasformiamo in una struct SetUsernameRequest
+	// Leggiamo la richiesta JSON e la trasformiamo in una struct SetUsernameRequest
 	var req SetUsernameRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -33,8 +34,7 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	// Verifichiamo che il nuovo nome utente rispetti le regole
-	// (minimo 3 caratteri, massimo 16)
+	// Controlliamo che il nome rispetti le regole del nostro api.yaml (min: 3, max: 16)
 	newUsername := req.Username
 	if len(newUsername) < 3 || len(newUsername) > 16 {
 		rt.sendErrorResponse(w, http.StatusBadRequest, "Nuovo nome utente non valido (deve essere tra 3 e 16 caratteri)")
@@ -44,9 +44,9 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	// Aggiorniamo il nome utente nel database
 	updatedUser, err := rt.db.SetMyUsername(userID, newUsername)
 	if err != nil {
-		// Controlliamo se l'errore è quello specifico di "nome già preso"
+		// Controlliamo se l'errore è dovuto a username già in uso
 		if errors.Is(err, database.ErrUsernameTaken) {
-			rt.sendErrorResponse(w, http.StatusConflict, "Username già in uso") // Risposta 409
+			rt.sendErrorResponse(w, http.StatusConflict, "Username già in uso")
 		} else {
 			// Altro errore del database
 			rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno durante l'aggiornamento: "+err.Error())
@@ -61,8 +61,12 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	_ = json.NewEncoder(w).Encode(updatedUser)
 }
 
-// setMyPhoto è l'handler per PUT /settings/photo
+// Handler per PUT /settings/photo
 func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// r è la richiesta JSON in entrata
+	// w è la risposta JSON in uscita
+	// _ sono i parametri dell'URL 
+
 	// Simulazione autenticazione (come in setMyUserName)
 	userID := r.Header.Get("X-User-ID")
 	if userID == "" {
@@ -78,23 +82,22 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
-	// VALIDAZIONE URI (come da api.yaml format: uri)
-	photoURL := req.PhotoURL // Accedi al campo corretto
-	_, err = url.ParseRequestURI(photoURL)
-	if err != nil || photoURL == "" { // Controlla anche che non sia vuoto
-		rt.sendErrorResponse(w, http.StatusBadRequest, "URL della foto non valido: "+err.Error()) // Risposta 400
+	photoURL := req.PhotoURL // Estrai l'URL della foto dalla richiesta
+	_, err = url.ParseRequestURI(photoURL) // Verifica che sia un URL valido
+	if err != nil || photoURL == "" { // Verifica che non sia vuoto
+		rt.sendErrorResponse(w, http.StatusBadRequest, "URL della foto non valido: "+err.Error()) 
 		return
 	}
 
 	// Chiama il database per aggiornare la foto
-	updatedUser, err := rt.db.SetMyPhoto(userID, photoURL) // Usa la funzione corretta
+	updatedUser, err := rt.db.SetMyPhoto(userID, photoURL) 
 	if err != nil {
 		// Gestione errore generico del database
 		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno durante l'aggiornamento della foto: "+err.Error())
 		return
 	}
 
-	// Invia la risposta di successo (200 OK con l'utente aggiornato)
+	// Invia la risposta di successo 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(updatedUser)

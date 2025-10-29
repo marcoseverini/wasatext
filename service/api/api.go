@@ -1,28 +1,26 @@
 package api
 
 import (
-	"errors"
+	"errors" // Libreria per gestire gli errori
 	"net/http" // Strumenti per gestire l'HTTP
-
 	"github.com/marcoseverini/wasatext/service/database" // Il nostro database
-
 	"github.com/julienschmidt/httprouter" // router HTTP di terze parti
 	"github.com/sirupsen/logrus" // Libreria di logging strutturato
 )
 
-// Dipendenze (come il DB)
+// Dipendenze per il router API
 type Config struct {
 	Logger   logrus.FieldLogger
 	Database database.AppDatabase
 }
 
-// Interfaccia del pacchetto
+// Interfaccia del router API
 type Router interface {
 	Handler() http.Handler
 	Close() error
 }
 
-// Implementazione concreta
+// Implementazione concreta del router API
 type _router struct {
 	router *httprouter.Router
 	
@@ -30,7 +28,7 @@ type _router struct {
 	db         database.AppDatabase 
 }
 
-// Costruttore dell'API 
+// Costruttore del router API
 func New(cfg Config) (Router, error) {
 
 	// Validazione delle dipendenze
@@ -41,29 +39,23 @@ func New(cfg Config) (Router, error) {
 		return nil, errors.New("database is required")
 	}
 
-	// Creiamo il router HTTP
+	// Creiamo il router HTTP di terze parti
 	router := httprouter.New()
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
 
-	// Creiamo l'istanza di _router (rt)
-	// salvando le dipendenze (db e logger) al suo interno.
+	// Creiamo l'istanza di _router (rt) salvando le dipendenze (db e logger) al suo interno.
 	rt := &_router{
 		router:     router,
 		baseLogger: cfg.Logger,
 		db:         cfg.Database,
 	}
 
-	// Registriamo le rotte HTTP
-
+	// Rotte HTTP
 	router.POST("/session", rt.doLogin)
 	router.PUT("/settings/username", rt.setMyUserName)
 	router.PUT("/settings/photo", rt.setMyPhoto)
 	
-	// Qui, in futuro, aggiungeremo tutte le altre rotte:
-	// router.PUT("/settings/username", rt.setMyUserName)
-	// router.GET("/conversations", rt.getMyConversations)
-	// ...
 	
 	// Restituiamo il router configurato
 	return rt, nil

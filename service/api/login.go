@@ -1,17 +1,16 @@
 package api
 
 import (
-	"encoding/json" // traduttore JSON
-	"net/http"      // Strumenti per gestire l'HTTP
-
+	"encoding/json" // Libreria per codificare/decodificare JSON
+	"net/http" // Strumenti per gestire l'HTTP
 	"github.com/julienschmidt/httprouter" // router HTTP di terze parti
 )
 
 // Handler per l'endpoint POST /session
-// r è la richiesta JSON in entrata
-// w è la risposta JSON in uscita
-// _ sono i parametri dell'URL (non usati in questo endpoint)
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// r è la richiesta JSON in entrata
+	// w è la risposta JSON in uscita
+	// _ sono i parametri dell'URL 
 	
 	// Leggiamo la richiesta JSON e la trasformiamo in una struct LoginRequest
 	var req LoginRequest 
