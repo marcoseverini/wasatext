@@ -56,6 +56,8 @@ func (db *appdbimpl) GetUserByName(username string) (User, error) {
 	// Prende un nome utente e restituisce l'utente corrispondente dal database
 	// Se l'utente non esiste, restituisce un errore 
 
+	var nullablePhotoURL sql.NullString // Variabile per gestire il campo photoUrl che può essere NULL
+
 	var user User
 
 	err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE username = ?`, username).
@@ -64,6 +66,11 @@ func (db *appdbimpl) GetUserByName(username string) (User, error) {
 	if err != nil {
 		return user, err
 	}
+
+	if nullablePhotoURL.Valid { // Controlla se photoUrl non è NULL
+        user.PhotoURL = nullablePhotoURL.String
+    }
+
 	return user, nil
 }
 
@@ -72,6 +79,10 @@ func (db *appdbimpl) GetUserByID(userID string) (User, error) {
 	// Se l'utente non esiste, restituisce un errore
 
     var user User
+
+	var nullablePhotoURL sql.NullString // Variabile per gestire il campo photoUrl che può essere NULL
+
+
     err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE id = ?`, userID).
         Scan(&user.ID, &user.Username, &user.PhotoURL) 
 
@@ -79,6 +90,10 @@ func (db *appdbimpl) GetUserByID(userID string) (User, error) {
         // Se QueryRow non trova l'utente, restituisce sql.ErrNoRows.
         // Lo restituiamo così com'è. Altrimenti, è un altro errore SQL.
         return User{}, err // Restituisce struct vuota e l'errore
+    }
+
+	if nullablePhotoURL.Valid { // Controlla se photoUrl non è NULL
+        user.PhotoURL = nullablePhotoURL.String
     }
 
     // Utente trovato, restituisci l'utente completo e nessun errore
