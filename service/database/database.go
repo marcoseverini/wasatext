@@ -193,3 +193,4 @@ func (db *appdbimpl) SetMyPhoto(userID string, photoURL string) (User, error) {
 
     return updatedUser, nil // Restituisci l'utente completo e aggiornato
 }
+

@@ -53,8 +53,8 @@ func New(cfg Config) (Router, error) {
 
 	// Rotte HTTP
 	router.POST("/session", rt.doLogin)
-	router.PUT("/settings/username", rt.setMyUserName)
-	router.PUT("/settings/photo", rt.setMyPhoto)
+	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUserName))
+	router.PUT("/settings/photo", rt.authMiddleware(rt.setMyPhoto))
 	
 	
 	// Restituiamo il router configurato

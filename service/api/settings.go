@@ -15,14 +15,12 @@ func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httpr
 	// w è la risposta JSON in uscita
 	// _ sono i parametri dell'URL 
 
-	// Otteniamo l'ID utente dall'autenticazione (simulata per ora)
-	// In futuro, questo ID verrà estratto dal token Bearer da un middleware.
-	// Per ora, lo leggiamo da un header fittizio per poter testare.
-	// Cambieremo questa parte quando implementeremo l'autenticazione.
-
-	userID := r.Header.Get("X-User-ID") // Header fittizio per il test
-	if userID == "" {
-		rt.sendErrorResponse(w, http.StatusUnauthorized, "Autenticazione richiesta (simulata tramite X-User-ID)")
+	// Il middleware 'authMiddleware' ha già verificato il token
+	// e ha messo l'ID utente nel context. Lo recuperiamo.
+	userID, ok := r.Context().Value(userIdentifierKey).(string)
+	if !ok {
+		// Questo non dovrebbe mai accadere se il middleware è applicato correttamente
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno: ID utente non trovato nel context")
 		return
 	}
 
@@ -67,10 +65,12 @@ func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, _ httprout
 	// w è la risposta JSON in uscita
 	// _ sono i parametri dell'URL 
 
-	// Simulazione autenticazione (come in setMyUserName)
-	userID := r.Header.Get("X-User-ID")
-	if userID == "" {
-		rt.sendErrorResponse(w, http.StatusUnauthorized, "Autenticazione richiesta (simulata tramite X-User-ID)")
+	// Il middleware 'authMiddleware' ha già verificato il token
+	// e ha messo l'ID utente nel context. Lo recuperiamo.
+	userID, ok := r.Context().Value(userIdentifierKey).(string)
+	if !ok {
+		// Questo non dovrebbe mai accadere se il middleware è applicato correttamente
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno: ID utente non trovato nel context")
 		return
 	}
 
