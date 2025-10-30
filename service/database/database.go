@@ -148,21 +148,21 @@ func (db *appdbimpl) SetMyUsername(userID string, newUsername string) (User, err
 	// Altrimenti aggiorna il nome utente e restituisce l'utente aggiornato
 
 	// Comando SQL per aggiornare il nome utente
-    sqlStmt := `UPDATE users SET username = ? WHERE id = ?`
-    _, err := db.c.Exec(sqlStmt, newUsername, userID) // Eseguiamo l'aggiornamento
+	sqlStmt := `UPDATE users SET username = ? WHERE id = ?`
+	_, err := db.c.Exec(sqlStmt, newUsername, userID) // Eseguiamo l'aggiornamento
 
-	fmt.Println(err)
-
-    if err != nil {
-        // Controlliamo se l'errore è dovuto al vincolo UNIQUE
-        var sqliteErr *sqlite3.Error
-        if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrConstraint && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-			// Restituiamo User{} (struct vuota) e l'errore specifico
-			return User{}, ErrUsernameTaken
+	if err != nil {
+		// Controlliamo se l'errore è dovuto al vincolo UNIQUE
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				// Restituiamo User{} (struct vuota) e l'errore specifico
+				return User{}, ErrUsernameTaken
+			}
 		}
-        // Altrimenti, è un altro errore SQL
-        return User{}, fmt.Errorf("error updating username: %w", err)
-    }
+		// Altrimenti, è un altro errore SQL
+		return User{}, fmt.Errorf("error updating username: %w", err)
+	}
 
     // Se l'aggiornamento è andato a buon fine, recuperiamo i dati aggiornati
 	updatedUser, err := db.GetUserByID(userID)
