@@ -151,6 +151,8 @@ func (db *appdbimpl) SetMyUsername(userID string, newUsername string) (User, err
     sqlStmt := `UPDATE users SET username = ? WHERE id = ?`
     _, err := db.c.Exec(sqlStmt, newUsername, userID) // Eseguiamo l'aggiornamento
 
+	fmt.Println(err)
+
     if err != nil {
         // Controlliamo se l'errore è dovuto al vincolo UNIQUE
         var sqliteErr *sqlite3.Error
