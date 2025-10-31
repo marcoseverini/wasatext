@@ -121,7 +121,7 @@ paths:
         - name: username
           in: query
           required: true
-          description: Stringa da cercare nel nome utente (case-insensitive). Minimo 1 carattere.
+          description: Stringa da cercare nel nome utente (case-insensitive). 
           schema:
             type: string
             pattern: '^.+$'

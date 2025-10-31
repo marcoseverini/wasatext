@@ -56,6 +56,8 @@ func New(cfg Config) (Router, error) {
 	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUserName))
 	router.PUT("/settings/photo", rt.authMiddleware(rt.setMyPhoto))
 	router.GET("/users", rt.authMiddleware(rt.searchUsers))
+	router.POST("/conversations", rt.authMiddleware(rt.startConversation))
+	router.GET("/conversations", rt.authMiddleware(rt.getMyConversations))
 
 	// Restituiamo il router configurato
 	return rt, nil
