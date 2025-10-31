@@ -6,7 +6,11 @@ import (
 	"fmt"                         // Libreria per formattare gli errori
 	"github.com/google/uuid"      // Pacchetto per generare ID univoci
 	"github.com/mattn/go-sqlite3" // Driver SQLite per Go
+	"time"    				// Libreria per gestire date e orari
 )
+
+var ErrForbidden = errors.New("user is not a member of this conversation")
+var ErrBadRequest = errors.New("invalid request data")
  
 // Interfaccia per comunicare con il database
 type AppDatabase interface {
@@ -22,6 +26,7 @@ type AppDatabase interface {
 	StartConversation(requestingUserID string, targetUserID string) (string, error)
 	GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error)
 	GetConversationSummaries(userID string) ([]ConversationSummary, error)
+	SendMessage(senderId string, convId string, content string, contentType string, replyToMsgId *string) (Message, error)
 
 }
 
@@ -81,8 +86,10 @@ func New(db *sql.DB) (AppDatabase, error) {
 		content TEXT NOT NULL,
 		contentType TEXT NOT NULL DEFAULT 'text',
 		timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		replyToMsgId TEXT, 
 		FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE,
-		FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE
+		FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (replyToMsgId) REFERENCES messages(id) ON DELETE SET NULL
 	);`
 	_, err = db.Exec(sqlStmt)
 	if err != nil {
@@ -537,4 +544,78 @@ func (db *appdbimpl) GetConversationSummaries(userID string) ([]ConversationSumm
 	}
 
 	return summaries, nil
+}
+
+// SendMessage crea un nuovo messaggio e lo restituisce.
+func (db *appdbimpl) SendMessage(senderId string, convId string, content string, contentType string, replyToMsgId *string) (Message, error) {
+	var message Message
+
+	// 1. Iniziamo una transazione
+	tx, err := db.c.Begin()
+	if err != nil {
+		return message, fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Annulla se qualcosa va storto
+
+	// 2. [Controllo 403] L'utente è membro della conversazione?
+	var isMember bool
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)",
+		convId, senderId).Scan(&isMember)
+	if err != nil {
+		return message, fmt.Errorf("error checking membership: %w", err)
+	}
+	if !isMember {
+		return message, ErrForbidden // Errore 403
+	}
+
+	// 3. [Controllo 400] Se 'replyToMsgId' è fornito, esiste in QUESTA conversazione?
+	if replyToMsgId != nil && *replyToMsgId != "" {
+		var replyExists bool
+		err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM messages WHERE id = ? AND conversationId = ?)",
+			*replyToMsgId, convId).Scan(&replyExists)
+		if err != nil {
+			return message, fmt.Errorf("error checking reply message: %w", err)
+		}
+		if !replyExists {
+			return message, ErrBadRequest // Errore 400
+		}
+	} else {
+		// Assicurati che sia nil se la stringa è vuota, per il DB
+		replyToMsgId = nil 
+	}
+
+	// 4. Crea il messaggio
+	newMsgId := "msg-" + uuid.New().String()
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano) // Formato ISO 8601
+
+	_, err = tx.Exec(`INSERT INTO messages (id, conversationId, senderId, content, contentType, timestamp, replyToMsgId) 
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		newMsgId, convId, senderId, content, contentType, timestamp, replyToMsgId)
+	if err != nil {
+		return message, fmt.Errorf("error inserting message: %w", err)
+	}
+
+	// 5. Committa la transazione
+	if err = tx.Commit(); err != nil {
+		return message, fmt.Errorf("could not commit transaction: %w", err)
+	}
+
+	// 6. Recupera l'oggetto User del mittente (ci serve per la risposta)
+	sender, err := db.GetUserByID(senderId)
+	if err != nil {
+		return message, fmt.Errorf("could not get sender details: %w", err)
+	}
+
+	// 7. Costruisci e restituisci l'oggetto Message completo (come da YAML)
+	message = Message{
+		ID:          newMsgId,
+		Sender:      sender,
+		Content:     content,
+		ContentType: contentType,
+		Timestamp:   timestamp,
+		Reactions:   []Reaction{}, // Appena creato, non ha reazioni
+		// 'status' e 'replyToMsgId' (struct) li omettiamo per ora
+	}
+	
+	return message, nil
 }

@@ -58,6 +58,8 @@ func New(cfg Config) (Router, error) {
 	router.GET("/users", rt.authMiddleware(rt.searchUsers))
 	router.POST("/conversations", rt.authMiddleware(rt.startConversation))
 	router.GET("/conversations", rt.authMiddleware(rt.getMyConversations))
+	router.POST("/conversations/:convId/messages", rt.authMiddleware(rt.sendMessage))
+	router.GET("/conversations/:convId", rt.authMiddleware(rt.getConversation))
 
 	// Restituiamo il router configurato
 	return rt, nil
