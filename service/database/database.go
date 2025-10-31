@@ -447,6 +447,13 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		messages = append(messages, msg)
 	}
 	conversation.Messages = messages
+
+	if conversation.Members == nil {
+		conversation.Members = []User{}
+	}
+	if conversation.Messages == nil {
+		conversation.Messages = []Message{}
+	}
 	
 	return conversation, nil
 }
