@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url" // Importa 'net/url' per la validazione
-
+	"database/sql"
 	"github.com/julienschmidt/httprouter"
 	"github.com/marcoseverini/wasatext/service/database" // Importa il package database
 )
