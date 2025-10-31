@@ -1,11 +1,11 @@
 package api
 
 import (
-	"errors" // Libreria per gestire gli errori
-	"net/http" // Strumenti per gestire l'HTTP
+	"errors"                                             // Libreria per gestire gli errori
+	"github.com/julienschmidt/httprouter"                // router HTTP di terze parti
 	"github.com/marcoseverini/wasatext/service/database" // Il nostro database
-	"github.com/julienschmidt/httprouter" // router HTTP di terze parti
-	"github.com/sirupsen/logrus" // Libreria di logging strutturato
+	"github.com/sirupsen/logrus"                         // Libreria di logging strutturato
+	"net/http"                                           // Strumenti per gestire l'HTTP
 )
 
 // Dipendenze per il router API
@@ -23,9 +23,9 @@ type Router interface {
 // Implementazione concreta del router API
 type _router struct {
 	router *httprouter.Router
-	
+
 	baseLogger logrus.FieldLogger
-	db         database.AppDatabase 
+	db         database.AppDatabase
 }
 
 // Costruttore del router API
@@ -55,8 +55,8 @@ func New(cfg Config) (Router, error) {
 	router.POST("/session", rt.doLogin)
 	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUserName))
 	router.PUT("/settings/photo", rt.authMiddleware(rt.setMyPhoto))
-	
-	
+	router.GET("/users", rt.authMiddleware(rt.searchUsers))
+
 	// Restituiamo il router configurato
 	return rt, nil
 }

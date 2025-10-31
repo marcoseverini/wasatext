@@ -124,6 +124,7 @@ paths:
           description: Stringa da cercare nel nome utente (case-insensitive). Minimo 1 carattere.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
             maxLength: 16
             example: "Mar"
@@ -138,6 +139,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/User'
                 minItems: 0
+                maxItems: 100
 
   /conversations: 
     post:
@@ -159,7 +161,9 @@ paths:
                 userId:
                   type: string
                   description: "ID univoco dell'utente con cui avviare la chat."
-                  minLength: 1
+                  pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$'
+                  minLength: 36
+                  maxLength: 36
               required: ["userId"]
       responses:
         '201':
@@ -191,6 +195,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/ConversationSummary'
                 minItems: 0
+                maxItems: 100
 
   /conversations/groups: 
     post:
@@ -232,6 +237,7 @@ paths:
           description: ID univoco della conversazione da recuperare.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
       responses:
         '200':
@@ -266,7 +272,9 @@ paths:
           description: ID della conversazione in cui inviare il messaggio.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
+            maxLength: 50
       requestBody:
         description: Contenuto del messaggio (testo o URL foto) e ID opzionale del messaggio a cui rispondere.
         required: true
@@ -313,7 +321,9 @@ paths:
           description: ID della conversazione di destinazione dell'inoltro.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
+            maxLength: 50
       requestBody:
         description: L'ID del messaggio originale da inoltrare.
         required: true
@@ -354,7 +364,9 @@ paths:
           description: ID del messaggio da cancellare.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
+            maxLength: 50
       responses:
         '204':
           description: Messaggio cancellato con successo. Nessun contenuto restituito.
@@ -384,6 +396,7 @@ paths:
           description: ID del messaggio a cui aggiungere la reazione.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
       requestBody:
         description: L'emoji della reazione.
@@ -432,7 +445,9 @@ paths:
           description: ID della reazione da rimuovere.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
+            maxLength: 50
       responses:
         '204':
           description: Reazione rimossa con successo. Nessun contenuto restituito.
@@ -462,6 +477,7 @@ paths:
           description: ID del gruppo da rinominare.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
       requestBody:
         description: Il nuovo nome desiderato per il gruppo.
@@ -509,6 +525,7 @@ paths:
           description: ID del gruppo di cui aggiornare la foto.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
       requestBody:
         description: Il nuovo URL della foto del gruppo.
@@ -556,6 +573,7 @@ paths:
           description: ID del gruppo a cui aggiungere il membro.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
       requestBody:
         description: L'ID dell'utente da aggiungere al gruppo.
@@ -599,6 +617,7 @@ paths:
           description: ID del gruppo da abbandonare.
           schema:
             type: string
+            pattern: '^.+$'
             minLength: 1
       responses:
         '204':
@@ -680,6 +699,7 @@ components:
         username:
           type: string
           description: Nome univoco scelto dall'utente.
+          pattern: '^.+$'
           minLength: 3
           maxLength: 16
           example: "Maria"
@@ -687,6 +707,7 @@ components:
           type: string
           format: uri
           description: URL (opzionale) dell'immagine del profilo utente. Deve essere un URI valido.
+          pattern: '^.+$'
           maxLength: 2048 
           example: "https://example.com/photos/maria.png"
       required: ["id", "username"]
@@ -698,6 +719,7 @@ components:
         username:
           type: string
           description: Il nuovo nome utente desiderato.
+          pattern: '^.+$'
           minLength: 3
           maxLength: 16
           example: "Maria99"
@@ -711,6 +733,7 @@ components:
           type: string
           format: uri
           description: Il nuovo URL dell'immagine. Deve essere un URI valido.
+          pattern: '^.+$'
           maxLength: 2048 
           example: "https://example.com/photos/new_photo.png"
       required: ["photoUrl"]
@@ -722,12 +745,14 @@ components:
         id:
           type: string
           description: ID univoco della conversazione.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50 
           example: "conv-456"
         name:
           type: string
           description: Nome della conversazione (nome del gruppo o dell'altro utente in chat 1-1).
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50
           example: "Gruppo Lavoro"
@@ -735,17 +760,21 @@ components:
           type: string
           format: uri
           description: URL (opzionale) dell'immagine della conversazione (foto gruppo o foto altro utente).
+          pattern: '^.+$'
+          minLength: 1
           maxLength: 2048
           example: "https://example.com/photos/gruppo.png"
         latestMessageSnippet:
           type: string
           description: Anteprima testuale dell'ultimo messaggio o indicazione generica (es. "Foto", "GIF"). Non presente se non ci sono messaggi.
+          pattern: '^.+$'
           maxLength: 100
           example: "Ciao, tutto bene?"
         latestMessageTimestamp:
           type: string
           format: date-time
           description: Data e ora dell'ultimo messaggio inviato nella conversazione (formato ISO 8601 UTC). Non presente se non ci sono messaggi.
+          pattern: '^.+$'
           example: "2024-10-20T10:30:00Z"
       required: ["id", "name"]
 
@@ -756,12 +785,14 @@ components:
         id:
           type: string
           description: ID univoco della conversazione.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50
           example: "conv-4D"
         name:
           type: string
           description: Nome della conversazione.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50
           example: "Gruppo Lavoro"
@@ -769,6 +800,8 @@ components:
           type: string
           format: uri
           description: URL (opzionale) dell'immagine della conversazione.
+          pattern: '^.+$'
+          minLength: 1
           maxLength: 2048
           example: "https://example.com/photos/gruppo.png"
         isGroup:
@@ -786,6 +819,7 @@ components:
           type: array
           description: Lista dei messaggi scambiati nella conversazione (ordinati dal più recente al meno recente).
           minItems: 0
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/Message'
       required: ["id", "name", "isGroup", "members", "messages"]
@@ -797,6 +831,7 @@ components:
         groupName:
           type: string
           description: Il nome da assegnare al nuovo gruppo.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50
           example: "Amici"
@@ -834,6 +869,7 @@ components:
         name:
           type: string
           description: Il nuovo nome desiderato per il gruppo.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50
           example: "Nuovo Nome Gruppo"
@@ -846,66 +882,83 @@ components:
         id:
           type: string
           description: ID univoco del messaggio.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50 
           example: "msg-789"
         sender:
+          allOf:
+            - $ref: '#/components/schemas/User'
           description: L'utente che ha inviato il messaggio.
-          $ref: '#/components/schemas/User'
         content:
           type: string
           description: Contenuto del messaggio (testo semplice o URL di una foto/GIF).
+          pattern: '^.+$'
           minLength: 1
           maxLength: 4000
           example: "Ciao!"
         contentType:
           type: string
           description: Tipo di contenuto del messaggio.
+          pattern: '^.+$'
           enum: ["text", "photo"]
           example: "text"
         timestamp:
           type: string
           format: date-time
           description: Data e ora di invio del messaggio (formato ISO 8601 UTC).
+          pattern: '^.+$'
           example: "2024-10-20T10:30:00Z"
         status:
           type: string
           description: Stato di consegna/lettura del messaggio (visibile solo per i messaggi inviati dall'utente autenticato). Non presente per i messaggi ricevuti.
+          pattern: '^.+$'
           enum: ["sent", "received", "read"]
           example: "read"
         reactions:
           type: array
           description: Lista delle reazioni associate a questo messaggio.
           minItems: 0
+          maxItems: 50
           items:
             $ref: '#/components/schemas/Reaction'
       required: ["id", "sender", "content", "contentType", "timestamp"]
       
     NewMessageRequest:
-      description: Dati inviati per creare un nuovo messaggio. Deve contenere `text` o `photoUrl`, ma non entrambi.
+      description: Dati inviati per creare un nuovo messaggio. Deve contenere `text` o `photoUrl`.
       type: object
       properties:
-        text:
-          type: string
-          description: Contenuto testuale del messaggio.
-          minLength: 1
-          maxLength: 4000
-          example: "Ciao, come va?"
-        photoUrl:
-          type: string
-          format: uri
-          description: URL di un'immagine (foto o GIF) da inviare come messaggio.
-          maxLength: 2048
-          example: "https://example.com/photos/image.jpg"
         replyToMsgId:
           type: string
           description: ID (opzionale) del messaggio a cui questo messaggio risponde.
           minLength: 1
           maxLength: 50
+          pattern: '^.+$'
           example: "msg-788"
       oneOf:
-        - required: ["text"]
-        - required: ["photoUrl"]
+        - type: object
+          description: Messaggio di testo.
+          properties:
+            text:
+              type: string
+              description: Contenuto testuale del messaggio.
+              minLength: 1
+              maxLength: 4000
+              pattern: '^.+$'
+              example: "Ciao, come va?"
+          required: ["text"]
+        - type: object
+          description: Messaggio con foto.
+          properties:
+            photoUrl:
+              type: string
+              format: uri
+              description: URL di un'immagine (foto o GIF) da inviare come messaggio.
+              minLength: 1
+              maxLength: 2048
+              pattern: '^.+$'
+              example: "https://example.com/photos/image.jpg"
+          required: ["photoUrl"]
         
     ForwardMessageRequest:
       description: Dati inviati per inoltrare un messaggio esistente.
@@ -914,6 +967,7 @@ components:
         originalMessageId:
           type: string
           description: ID univoco del messaggio da inoltrare.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50
           example: "msg-123"
@@ -926,18 +980,20 @@ components:
         id:
           type: string
           description: ID univoco della reazione.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 50 
-          example: "reaction-abc"
         emoji:
           type: string
           description: Il carattere emoji della reazione.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 4
           example: "👍"
         user:
+          allOf:
+            - $ref: '#/components/schemas/User'
           description: L'utente che ha aggiunto la reazione.
-          $ref: '#/components/schemas/User'
       required: ["id", "emoji", "user"]
 
     NewReactionRequest:
@@ -947,6 +1003,7 @@ components:
         emoji:
           type: string
           description: Il carattere emoji da usare per la reazione.
+          pattern: '^.+$'
           minLength: 1
           maxLength: 4
           example: "👍"

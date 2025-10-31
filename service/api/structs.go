@@ -5,7 +5,7 @@ package api
 type ErrorResponse struct {
 	Message string `json:"message"`
 }
-
+ 
 // il JSON in entrata dalla richiesta POST /session
 // Corrisponde a #/components/schemas/LoginRequest
 type LoginRequest struct {
@@ -27,5 +27,5 @@ type SetUsernameRequest struct {
 // Il JSON in entrata dalla richiesta PUT /settings/photo
 // Corrisponde a #/components/schemas/SetPhotoRequest
 type SetPhotoRequest struct {
-	PhotoURL string `json:"photoUrl"` // Corretto: Tag 'json', nome campo JSON 'photoUrl'
+	PhotoURL string `json:"photoUrl"` 
 }

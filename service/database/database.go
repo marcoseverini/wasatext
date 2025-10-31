@@ -1,29 +1,30 @@
 package database
 
 import (
-	"database/sql" // Libreria per parlare con SQL
-	"errors" // Libreria per gestire gli errori
-	"fmt" // Libreria per formattare gli errori
+	"database/sql"                // Libreria per parlare con SQL
+	"errors"                      // Libreria per gestire gli errori
+	"fmt"                         // Libreria per formattare gli errori
+	"github.com/google/uuid"      // Pacchetto per generare ID univoci
 	"github.com/mattn/go-sqlite3" // Driver SQLite per Go
-	"github.com/google/uuid" // Pacchetto per generare ID univoci
 )
-
+ 
 // Interfaccia per comunicare con il database
-type AppDatabase interface { 
-	Ping() error 
-	DoLogin(username string) (User, error) 
+type AppDatabase interface {
+	Ping() error
+	DoLogin(username string) (User, error)
 	GetUserByID(userID string) (User, error)
 	GetUserByName(username string) (User, error)
 	CreateUser(username string) (User, error)
 	SetMyUsername(userID string, newUsername string) (User, error)
-	SetMyPhoto(userID string, photoURL string) (User, error) 
+	SetMyPhoto(userID string, photoURL string) (User, error)
+	SearchUsers(username string) ([]User, error)
 }
 
 type appdbimpl struct {
 	c *sql.DB // Connessione con il Database
 }
 
-func New(db *sql.DB) (AppDatabase, error) { 
+func New(db *sql.DB) (AppDatabase, error) {
 	// Prende in input una connessione al database, restituisce un'istanza di AppDatabase
 
 	if db == nil { // Verifica che la connessione al database non sia nulla
@@ -42,34 +43,34 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
-	// Ritorna un puntatore all'implementazione concreta del database (appdbimpl) 
+	// Ritorna un puntatore all'implementazione concreta del database (appdbimpl)
 	// che soddisfa l'interfaccia (AppDatabase) ed un errore nullo (nil) per segnalare il successo
-	return &appdbimpl{c: db}, nil 
+	return &appdbimpl{c: db}, nil
 }
 
 func (db *appdbimpl) Ping() error {
 	// Inoltra il comando Ping alla connessione con il database per verificare che sia attiva
-	return db.c.Ping() 
+	return db.c.Ping()
 }
 
 func (db *appdbimpl) GetUserByName(username string) (User, error) {
 	// Prende un nome utente e restituisce l'utente corrispondente dal database
-	// Se l'utente non esiste, restituisce un errore 
+	// Se l'utente non esiste, restituisce un errore
 
 	var nullablePhotoURL sql.NullString // Variabile per gestire il campo photoUrl che può essere NULL
 
 	var user User
 
 	err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE username = ?`, username).
-        Scan(&user.ID, &user.Username, &nullablePhotoURL)
+		Scan(&user.ID, &user.Username, &nullablePhotoURL)
 
 	if err != nil {
 		return user, err
 	}
 
 	if nullablePhotoURL.Valid { // Controlla se photoUrl non è NULL
-        user.PhotoURL = nullablePhotoURL.String
-    }
+		user.PhotoURL = nullablePhotoURL.String
+	}
 
 	return user, nil
 }
@@ -78,32 +79,31 @@ func (db *appdbimpl) GetUserByID(userID string) (User, error) {
 	// Prende un userID e restituisce l'utente corrispondente dal database
 	// Se l'utente non esiste, restituisce un errore
 
-    var user User
+	var user User
 
 	var nullablePhotoURL sql.NullString // Variabile per gestire il campo photoUrl che può essere NULL
 
+	err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE id = ?`, userID).
+		Scan(&user.ID, &user.Username, &nullablePhotoURL)
 
-    err := db.c.QueryRow(`SELECT id, username, photoUrl FROM users WHERE id = ?`, userID).
-        Scan(&user.ID, &user.Username, &nullablePhotoURL) 
-
-    if err != nil {
-        // Se QueryRow non trova l'utente, restituisce sql.ErrNoRows.
-        // Lo restituiamo così com'è. Altrimenti, è un altro errore SQL.
-        return User{}, err // Restituisce struct vuota e l'errore
-    }
+	if err != nil {
+		// Se QueryRow non trova l'utente, restituisce sql.ErrNoRows.
+		// Lo restituiamo così com'è. Altrimenti, è un altro errore SQL.
+		return User{}, err // Restituisce struct vuota e l'errore
+	}
 
 	if nullablePhotoURL.Valid { // Controlla se photoUrl non è NULL
-        user.PhotoURL = nullablePhotoURL.String
-    }
+		user.PhotoURL = nullablePhotoURL.String
+	}
 
-    // Utente trovato, restituisci l'utente completo e nessun errore
-    return user, nil
+	// Utente trovato, restituisci l'utente completo e nessun errore
+	return user, nil
 }
 
 func (db *appdbimpl) CreateUser(username string) (User, error) {
-	// Prende un nome utente e crea un nuovo utente nel database 
+	// Prende un nome utente e crea un nuovo utente nel database
 	// Restituisce l'utente creato o un errore
-	
+
 	newID := uuid.New().String() // Genera un nuovo ID univoco per l'utente
 
 	user := User{ // Crea una struttura User con l'ID e il nome utente
@@ -111,8 +111,8 @@ func (db *appdbimpl) CreateUser(username string) (User, error) {
 		Username: username,
 	}
 
-	sqlStmt := `INSERT INTO users (id, username) VALUES (?, ?)` 
-	_, err := db.c.Exec(sqlStmt, user.ID, user.Username) 
+	sqlStmt := `INSERT INTO users (id, username) VALUES (?, ?)`
+	_, err := db.c.Exec(sqlStmt, user.ID, user.Username)
 
 	if err != nil {
 		return user, err
@@ -164,21 +164,20 @@ func (db *appdbimpl) SetMyUsername(userID string, newUsername string) (User, err
 		return User{}, fmt.Errorf("error updating username: %w", err)
 	}
 
-    // Se l'aggiornamento è andato a buon fine, recuperiamo i dati aggiornati
+	// Se l'aggiornamento è andato a buon fine, recuperiamo i dati aggiornati
 	updatedUser, err := db.GetUserByID(userID)
-    if err != nil {
-        return User{}, fmt.Errorf("error fetching updated user data after username update: %w", err)
-    }
+	if err != nil {
+		return User{}, fmt.Errorf("error fetching updated user data after username update: %w", err)
+	}
 
-    return updatedUser, nil // Restituisci l'utente aggiornato e nessun errore
+	return updatedUser, nil // Restituisci l'utente aggiornato e nessun errore
 }
-
 
 func (db *appdbimpl) SetMyPhoto(userID string, photoURL string) (User, error) {
 	// Prende l'ID utente dell'utente che vuole cambiare la foto profilo e la nuova URL desiderata
 
 	// Comando SQL per aggiornare la foto profilo
-	sqlStmt := `UPDATE users SET photoUrl = ? WHERE id = ?` 
+	sqlStmt := `UPDATE users SET photoUrl = ? WHERE id = ?`
 	_, err := db.c.Exec(sqlStmt, photoURL, userID)
 	if err != nil {
 		return User{}, fmt.Errorf("error updating user profile photo: %w", err)
@@ -186,11 +185,54 @@ func (db *appdbimpl) SetMyPhoto(userID string, photoURL string) (User, error) {
 
 	// Se l'aggiornamento è andato a buon fine, recuperiamo i dati aggiornati
 	updatedUser, err := db.GetUserByID(userID)
-    if err != nil {
-        // Se non riusciamo a leggere l'utente appena aggiornato, c'è un problema serio.
-        return User{}, fmt.Errorf("error fetching updated user data after photo update: %w", err)
-    }
+	if err != nil {
+		// Se non riusciamo a leggere l'utente appena aggiornato, c'è un problema serio.
+		return User{}, fmt.Errorf("error fetching updated user data after photo update: %w", err)
+	}
 
-    return updatedUser, nil // Restituisci l'utente completo e aggiornato
+	return updatedUser, nil // Restituisci l'utente completo e aggiornato
 }
 
+// SearchUsers cerca gli utenti il cui nome utente contiene la stringa fornita.
+func (db *appdbimpl) SearchUsers(username string) ([]User, error) {
+	// Lista per contenere i risultati
+	var users []User
+
+	// Costruiamo la stringa di ricerca con i caratteri jolly
+	searchQuery := "%" + username + "%"
+
+	// Eseguiamo la query per trovare tutti gli utenti che corrispondono
+	rows, err := db.c.Query(`SELECT id, username, photoUrl FROM users WHERE username LIKE ?`, searchQuery)
+	if err != nil {
+		return nil, fmt.Errorf("error searching users: %w", err)
+	}
+	// È importante chiudere 'rows' quando abbiamo finito
+	defer rows.Close()
+
+	// Iteriamo su ogni riga (utente) trovata
+	for rows.Next() {
+		var user User
+		var nullablePhotoURL sql.NullString
+
+		// Scansioniamo i dati della riga nella struct User
+		if err := rows.Scan(&user.ID, &user.Username, &nullablePhotoURL); err != nil {
+			return nil, fmt.Errorf("error scanning user row: %w", err)
+		}
+
+		if nullablePhotoURL.Valid {
+			user.PhotoURL = nullablePhotoURL.String
+		}
+		
+		// Aggiungiamo l'utente alla lista dei risultati
+		users = append(users, user)
+	}
+
+	// Controlliamo se ci sono stati errori durante l'iterazione
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+
+	// Se nessun utente è stato trovato, 'users' sarà una lista vuota (non nil)
+	// Questo è corretto, la query ha avuto successo e ha restituito 0 risultati.
+	return users, nil
+}

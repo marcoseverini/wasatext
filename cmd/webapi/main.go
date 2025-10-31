@@ -24,13 +24,13 @@ executable during the build).
 package main
 
 import (
-	"github.com/marcoseverini/wasatext/service/api"
-	"github.com/marcoseverini/wasatext/service/database"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/ardanlabs/conf"
+	"github.com/marcoseverini/wasatext/service/api"
+	"github.com/marcoseverini/wasatext/service/database"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -57,7 +57,7 @@ func main() {
 // * waits for any termination event: SIGTERM signal (UNIX), non-recoverable server error, etc.
 // * closes the principal web server
 func run() error {
-	
+
 	// Load Configuration and defaults
 	cfg, err := loadConfiguration()
 	if err != nil {
@@ -117,8 +117,6 @@ func run() error {
 		return fmt.Errorf("creating the API server instance: %w", err)
 	}
 	router := apirouter.Handler()
-
-	
 
 	// Apply CORS policy
 	router = applyCORSHandler(router)
