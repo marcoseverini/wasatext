@@ -27,6 +27,7 @@ type AppDatabase interface {
 	GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error)
 	GetConversationSummaries(userID string) ([]ConversationSummary, error)
 	SendMessage(senderId string, convId string, content string, contentType string, replyToMsgId *string) (Message, error)
+	DeleteMessage(requestingUserID string, messageID string) error
 
 }
 
@@ -618,4 +619,35 @@ func (db *appdbimpl) SendMessage(senderId string, convId string, content string,
 	}
 	
 	return message, nil
+}
+
+// DeleteMessage elimina un messaggio.
+// Restituisce ErrForbidden se l'utente non è il mittente.
+// Restituisce sql.ErrNoRows se il messaggio non esiste.
+func (db *appdbimpl) DeleteMessage(requestingUserID string, messageID string) error {
+
+	// 1. Controlliamo di chi è il messaggio
+	var senderId string
+	err := db.c.QueryRow("SELECT senderId FROM messages WHERE id = ?", messageID).Scan(&senderId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Errore 404
+			return sql.ErrNoRows 
+		}
+		// Altro errore
+		return fmt.Errorf("error checking message sender: %w", err)
+	}
+
+	// 2. Controllo Autorizzazione (403)
+	if senderId != requestingUserID {
+		return ErrForbidden // Stesso errore ErrForbidden che abbiamo definito prima
+	}
+
+	// 3. L'utente è autorizzato. Elimina il messaggio.
+	_, err = db.c.Exec("DELETE FROM messages WHERE id = ?", messageID)
+	if err != nil {
+		return fmt.Errorf("error deleting message: %w", err)
+	}
+
+	return nil // Successo
 }

@@ -125,3 +125,42 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 	w.WriteHeader(http.StatusOK) // 200
 	_ = json.NewEncoder(w).Encode(conversationDetails)
 }
+
+
+// deleteMessage (DELETE /messages/{msgId})
+func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	// 1. Prendi l'ID dell'utente che fa la richiesta (dal middleware)
+	requestingUserID, err := rt.getUserIdFromAuth(r)
+	if err != nil {
+		rt.sendErrorResponse(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	// 2. Prendi l'ID del messaggio dai parametri URL
+	msgId := ps.ByName("msgId")
+	if msgId == "" {
+		rt.sendErrorResponse(w, http.StatusBadRequest, "ID messaggio mancante.")
+		return
+	}
+
+	// 3. Chiama il database per eliminare
+	err = rt.db.DeleteMessage(requestingUserID, msgId)
+	if err != nil {
+		if errors.Is(err, database.ErrForbidden) {
+			// Errore 403
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei il mittente di questo messaggio.")
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			// Errore 404
+			rt.sendErrorResponse(w, http.StatusNotFound, "Messaggio non trovato.")
+			return
+		}
+		// Altro errore
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'eliminazione del messaggio.")
+		return
+	}
+
+	// 4. Successo
+	w.WriteHeader(http.StatusNoContent) // 204 No Content
+}
