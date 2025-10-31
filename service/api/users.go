@@ -3,7 +3,7 @@ package api
 import (
 	"net/http" // Libreria per gestire richieste e risposte HTTP
 	"github.com/julienschmidt/httprouter" // Router HTTP di terze parti
-	"errors" // Libreria per gestire gli errori
+	"github.com/marcoseverini/wasatext/service/database"
 	"encoding/json" // Libreria per codificare e decodificare JSON
 )
 
@@ -38,7 +38,7 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 	}
 	
 	// Filtra l'utente che fa la richiesta dai risultati 
-	var filteredUsers []User
+	var filteredUsers []database.User
 	for _, user := range users {
 		if user.ID != requestingUserID {
 			filteredUsers = append(filteredUsers, user)
