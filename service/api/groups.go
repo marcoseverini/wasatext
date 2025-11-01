@@ -190,24 +190,19 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	// 3. Chiama il DB
 	err = rt.db.AddGroupMember(requestingUserID, convId, req.UserID)
 	if err != nil {
-		if errors.Is(err, database.ErrForbidden) {
+		switch {
+		case errors.Is(err, database.ErrForbidden):
 			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo.")
-			return
-		}
-		if errors.Is(err, database.ErrBadRequest) {
+		case errors.Is(err, database.ErrBadRequest):
 			rt.sendErrorResponse(w, http.StatusForbidden, "Non è un gruppo.")
-			return
-		}
-		if errors.Is(err, sql.ErrNoRows) {
+		case errors.Is(err, sql.ErrNoRows):
 			rt.sendErrorResponse(w, http.StatusNotFound, "Gruppo o utente da aggiungere non trovato.")
-			return
-		}
-		if errors.Is(err, database.ErrAlreadyMember) {
+		case errors.Is(err, database.ErrAlreadyMember):
 			rt.sendErrorResponse(w, http.StatusConflict, "L'utente è già membro del gruppo.")
-			return
+		default:
+			rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiunta del membro.")
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiunta del membro.")
-		return
+		return // Ritorna dopo aver gestito l'errore
 	}
 
 	// 4. Successo

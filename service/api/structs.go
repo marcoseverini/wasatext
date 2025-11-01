@@ -5,7 +5,7 @@ package api
 type ErrorResponse struct {
 	Message string `json:"message"`
 }
- 
+
 // il JSON in entrata dalla richiesta POST /session
 // Corrisponde a #/components/schemas/LoginRequest
 type LoginRequest struct {
@@ -27,18 +27,17 @@ type SetUsernameRequest struct {
 // Il JSON in entrata dalla richiesta PUT /settings/photo
 // Corrisponde a #/components/schemas/SetPhotoRequest
 type SetPhotoRequest struct {
-	PhotoURL string `json:"photoUrl"` 
+	PhotoURL string `json:"photoUrl"`
 }
 
 // Il JSON in entrata dalla richiesta POST /messages/{msgId}/forward
 // Corrisponde a #/components/schemas/ForwardMessageRequest
 type ForwardMessageRequest struct {
-    OriginalMessageId string `json:"originalMessageId"`
+	OriginalMessageId string `json:"originalMessageId"`
 }
 
 // Il JSON in entrata dalla richiesta POST /conversations/{convId}/reactions
 // Corrisponde a #/components/schemas/NewReactionRequest
 type NewReactionRequest struct {
-    Emoji string `json:"emoji"`
+	Emoji string `json:"emoji"`
 }
-

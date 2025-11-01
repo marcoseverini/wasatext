@@ -6,13 +6,13 @@ import (
 	"fmt"                         // Libreria per formattare gli errori
 	"github.com/google/uuid"      // Pacchetto per generare ID univoci
 	"github.com/mattn/go-sqlite3" // Driver SQLite per Go
-	"time"    				// Libreria per gestire date e orari
+	"time"                        // Libreria per gestire date e orari
 )
 
 var ErrForbidden = errors.New("user is not a member of this conversation")
 var ErrBadRequest = errors.New("invalid request data")
 var ErrAlreadyMember = errors.New("user is already a member")
- 
+
 // Interfaccia per comunicare con il database
 type AppDatabase interface {
 	Ping() error
@@ -31,13 +31,12 @@ type AppDatabase interface {
 	DeleteMessage(requestingUserID string, messageID string) error
 	ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error)
 	AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error)
-    RemoveReaction(requestingUserID string, reactionID string, messageID string) error
+	RemoveReaction(requestingUserID string, reactionID string, messageID string) error
 	CreateGroup(requestingUserID string, groupName string, memberIds []string) (string, error)
-    SetGroupName(requestingUserID string, convId string, newName string) error
-    SetGroupPhoto(requestingUserID string, convId string, newPhotoURL string) error
-    AddGroupMember(requestingUserID string, convId string, targetUserID string) error
-    LeaveGroup(requestingUserID string, convId string) error
-
+	SetGroupName(requestingUserID string, convId string, newName string) error
+	SetGroupPhoto(requestingUserID string, convId string, newPhotoURL string) error
+	AddGroupMember(requestingUserID string, convId string, targetUserID string) error
+	LeaveGroup(requestingUserID string, convId string) error
 }
 
 type appdbimpl struct {
@@ -63,7 +62,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
-	// Tabella Conversazioni 
+	// Tabella Conversazioni
 	sqlStmt = `CREATE TABLE IF NOT EXISTS conversations (
 		id TEXT NOT NULL PRIMARY KEY,
 		name TEXT,
@@ -75,7 +74,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating conversations table: %w", err)
 	}
 
-	// Tabella Membri Conversazione 
+	// Tabella Membri Conversazione
 	sqlStmt = `CREATE TABLE IF NOT EXISTS conversation_members (
 		conversationId TEXT NOT NULL,
 		userId TEXT NOT NULL,
@@ -302,7 +301,7 @@ func (db *appdbimpl) SearchUsers(username string) ([]User, error) {
 		if nullablePhotoURL.Valid {
 			user.PhotoURL = nullablePhotoURL.String
 		}
-		
+
 		// Aggiungiamo l'utente alla lista dei risultati
 		users = append(users, user)
 	}
@@ -330,7 +329,7 @@ func (db *appdbimpl) CheckUserExists(userID string) (bool, error) {
 // StartConversation trova una chat 1-a-1 esistente o ne crea una nuova.
 // Restituisce l'ID della conversazione.
 func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID string) (string, error) {
-	
+
 	// 1. Cerca una chat 1-a-1 (non di gruppo) esistente tra questi due utenti.
 	// Questa query trova le conversazioni (c.id) che NON sono gruppi (c.isGroup = 0)
 	// e che hanno ESATTAMENTE due membri (COUNT(m.userId) = 2)
@@ -347,12 +346,12 @@ func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID str
 		   AND SUM(CASE WHEN m.userId = ? THEN 1 ELSE 0 END) = 1;`
 
 	err := db.c.QueryRow(query, requestingUserID, targetUserID).Scan(&existingConvID)
-	
+
 	if err == nil {
 		// Trovata! Restituisci l'ID della conversazione esistente.
 		return existingConvID, nil
 	}
-	
+
 	if !errors.Is(err, sql.ErrNoRows) {
 		// Errore SQL inaspettato
 		return "", fmt.Errorf("error finding existing conversation: %w", err)
@@ -364,7 +363,10 @@ func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID str
 	if err != nil {
 		return "", fmt.Errorf("could not begin transaction: %w", err)
 	}
-	defer tx.Rollback() // Se qualcosa va storto, annulla
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// Annulla se qualcosa va storto
 
 	// Crea la nuova conversazione
 	newConvID := "conv-" + uuid.New().String()
@@ -412,7 +414,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	if err != nil {
 		return conversation, fmt.Errorf("could not get conversation details: %w", err)
 	}
-	
+
 	conversation.Name = nullableName.String
 	conversation.PhotoURL = nullablePhoto.String
 
@@ -425,7 +427,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 			JOIN conversation_members cm ON u.id = cm.userId
 			WHERE cm.conversationId = ? AND cm.userId != ?`, conversationID, requestingUserID).
 			Scan(&otherUser.ID, &otherUser.Username, &otherPhoto)
-		
+
 		if err == nil {
 			conversation.Name = otherUser.Username
 			conversation.PhotoURL = otherPhoto.String
@@ -452,6 +454,9 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		user.PhotoURL = photo.String
 		members = append(members, user)
 	}
+	if err = rows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating members: %w", err)
+	}
 	conversation.Members = members
 
 	// 5. Prendi i messaggi (per ora, senza reazioni o 'sender' completo per semplicità)
@@ -470,7 +475,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 
 	var messages []Message
 
-	messageMap := make(map[string]*Message) 
+	messageMap := make(map[string]*Message)
 
 	for msgRows.Next() {
 		var msg Message
@@ -485,8 +490,10 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		// Aggiungi un puntatore al messaggio nella mappa
 		messageMap[msg.ID] = &messages[len(messages)-1]
 	}
+	if err = msgRows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating messages: %w", err)
+	}
 	msgRows.Close() // Chiudi qui perché abbiamo finito con msgRows
-	
 
 	// 6. [MODIFICA] Prendi TUTTE le reazioni per questa conversazione in un'unica query
 	//    e uniscile ai messaggi in Go.
@@ -518,6 +525,9 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 			msgPtr.Reactions = append(msgPtr.Reactions, reaction)
 		}
 	}
+	if err = reactRows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating reactions: %w", err)
+	}
 
 	conversation.Messages = messages
 
@@ -527,10 +537,9 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	if conversation.Messages == nil {
 		conversation.Messages = []Message{}
 	}
-	
+
 	return conversation, nil
 }
-
 
 // GetConversationSummaries recupera la lista delle chat per un utente.
 func (db *appdbimpl) GetConversationSummaries(userID string) ([]ConversationSummary, error) {
@@ -580,7 +589,7 @@ func (db *appdbimpl) GetConversationSummaries(userID string) ([]ConversationSumm
 		LEFT JOIN OtherUsers ou ON c.id = ou.conversationId AND c.isGroup = 0
 		ORDER BY latestMessageTimestamp DESC;
 	`
-	
+
 	rows, err := db.c.Query(query, userID, userID, userID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error querying conversation summaries: %w", err)
@@ -596,12 +605,12 @@ func (db *appdbimpl) GetConversationSummaries(userID string) ([]ConversationSumm
 		if err != nil {
 			return nil, fmt.Errorf("error scanning summary row: %w", err)
 		}
-		
+
 		summary.Name = name.String
 		summary.PhotoURL = photo.String
 		summary.LatestMessageSnippet = snippet.String
 		summary.LatestMessageTimestamp = timestamp.String
-		
+
 		summaries = append(summaries, summary)
 	}
 
@@ -621,7 +630,11 @@ func (db *appdbimpl) SendMessage(senderId string, convId string, content string,
 	if err != nil {
 		return message, fmt.Errorf("could not begin transaction: %w", err)
 	}
-	defer tx.Rollback() // Annulla se qualcosa va storto
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// Annulla se qualcosa va storto
 
 	// 2. [Controllo 403] L'utente è membro della conversazione?
 	var isMember bool
@@ -647,7 +660,7 @@ func (db *appdbimpl) SendMessage(senderId string, convId string, content string,
 		}
 	} else {
 		// Assicurati che sia nil se la stringa è vuota, per il DB
-		replyToMsgId = nil 
+		replyToMsgId = nil
 	}
 
 	// 4. Crea il messaggio
@@ -682,7 +695,7 @@ func (db *appdbimpl) SendMessage(senderId string, convId string, content string,
 		Reactions:   []Reaction{}, // Appena creato, non ha reazioni
 		// 'status' e 'replyToMsgId' (struct) li omettiamo per ora
 	}
-	
+
 	return message, nil
 }
 
@@ -697,7 +710,7 @@ func (db *appdbimpl) DeleteMessage(requestingUserID string, messageID string) er
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Errore 404
-			return sql.ErrNoRows 
+			return sql.ErrNoRows
 		}
 		// Altro errore
 		return fmt.Errorf("error checking message sender: %w", err)
@@ -719,323 +732,336 @@ func (db *appdbimpl) DeleteMessage(requestingUserID string, messageID string) er
 
 // ForwardMessage inoltra un messaggio esistente in una nuova conversazione.
 func (db *appdbimpl) ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error) {
-    var originalMsg struct {
-        Content     string
-        ContentType string
-    }
-    var forwardedMessage Message
+	var originalMsg struct {
+		Content     string
+		ContentType string
+	}
+	var forwardedMessage Message
 
-    // 1. Inizia transazione
-    tx, err := db.c.Begin()
-    if err != nil {
-        return forwardedMessage, fmt.Errorf("could not begin transaction: %w", err)
-    }
-    defer tx.Rollback()
+	// 1. Inizia transazione
+	tx, err := db.c.Begin()
+	if err != nil {
+		return forwardedMessage, fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}() // Annulla se qualcosa va storto
 
-    // 2. [Controllo 403 Target] L'utente è membro della chat di destinazione?
-    var isTargetMember bool
-    err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)",
-        targetConvId, requestingUserID).Scan(&isTargetMember)
-    if err != nil {
-        return forwardedMessage, fmt.Errorf("error checking target membership: %w", err)
-    }
-    if !isTargetMember {
-        // L'utente non è nella chat di destinazione
-        return forwardedMessage, ErrForbidden 
-    }
+	// 2. [Controllo 403 Target] L'utente è membro della chat di destinazione?
+	var isTargetMember bool
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)",
+		targetConvId, requestingUserID).Scan(&isTargetMember)
+	if err != nil {
+		return forwardedMessage, fmt.Errorf("error checking target membership: %w", err)
+	}
+	if !isTargetMember {
+		// L'utente non è nella chat di destinazione
+		return forwardedMessage, ErrForbidden
+	}
 
-    // 3. [Controllo 404/403 Source] L'utente può vedere il messaggio originale?
-    //    Recuperiamo il messaggio e verifichiamo che l'utente sia membro della chat *originale*.
-    err = tx.QueryRow(`
+	// 3. [Controllo 404/403 Source] L'utente può vedere il messaggio originale?
+	//    Recuperiamo il messaggio e verifichiamo che l'utente sia membro della chat *originale*.
+	err = tx.QueryRow(`
         SELECT m.content, m.contentType
         FROM messages m
         JOIN conversation_members cm ON m.conversationId = cm.conversationId
         WHERE m.id = ? AND cm.userId = ?`,
-        originalMessageId, requestingUserID).Scan(&originalMsg.Content, &originalMsg.ContentType)
+		originalMessageId, requestingUserID).Scan(&originalMsg.Content, &originalMsg.ContentType)
 
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            // 404 (Messaggio non trovato o utente non membro della chat originale)
-            return forwardedMessage, sql.ErrNoRows 
-        }
-        return forwardedMessage, fmt.Errorf("error getting original message: %w", err)
-    }
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// 404 (Messaggio non trovato o utente non membro della chat originale)
+			return forwardedMessage, sql.ErrNoRows
+		}
+		return forwardedMessage, fmt.Errorf("error getting original message: %w", err)
+	}
 
-    // 4. Crea il nuovo messaggio (l'inoltro) nella chat di destinazione
-    newMsgId := "msg-" + uuid.New().String()
-    timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+	// 4. Crea il nuovo messaggio (l'inoltro) nella chat di destinazione
+	newMsgId := "msg-" + uuid.New().String()
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 
-    _, err = tx.Exec(`
+	_, err = tx.Exec(`
         INSERT INTO messages (id, conversationId, senderId, content, contentType, timestamp, forwardedFromMsgId)
         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        newMsgId, targetConvId, requestingUserID, originalMsg.Content, originalMsg.ContentType, timestamp, originalMessageId)
-    if err != nil {
-        return forwardedMessage, fmt.Errorf("error inserting forwarded message: %w", err)
-    }
+		newMsgId, targetConvId, requestingUserID, originalMsg.Content, originalMsg.ContentType, timestamp, originalMessageId)
+	if err != nil {
+		return forwardedMessage, fmt.Errorf("error inserting forwarded message: %w", err)
+	}
 
-    // 5. Committa
-    if err = tx.Commit(); err != nil {
-        return forwardedMessage, fmt.Errorf("could not commit transaction: %w", err)
-    }
+	// 5. Committa
+	if err = tx.Commit(); err != nil {
+		return forwardedMessage, fmt.Errorf("could not commit transaction: %w", err)
+	}
 
-    // 6. Recupera i dettagli del mittente (per la risposta JSON)
-    sender, err := db.GetUserByID(requestingUserID)
-    if err != nil {
-        return forwardedMessage, fmt.Errorf("could not get sender details: %w", err)
-    }
+	// 6. Recupera i dettagli del mittente (per la risposta JSON)
+	sender, err := db.GetUserByID(requestingUserID)
+	if err != nil {
+		return forwardedMessage, fmt.Errorf("could not get sender details: %w", err)
+	}
 
-    // 7. Costruisci e restituisci l'oggetto Message
-    forwardedMessage = Message{
-        ID:          newMsgId,
-        Sender:      sender,
-        Content:     originalMsg.Content,
-        ContentType: originalMsg.ContentType,
-        Timestamp:   timestamp,
-        Reactions:   []Reaction{}, // Messaggio nuovo, no reazioni
-    }
+	// 7. Costruisci e restituisci l'oggetto Message
+	forwardedMessage = Message{
+		ID:          newMsgId,
+		Sender:      sender,
+		Content:     originalMsg.Content,
+		ContentType: originalMsg.ContentType,
+		Timestamp:   timestamp,
+		Reactions:   []Reaction{}, // Messaggio nuovo, no reazioni
+	}
 
-    return forwardedMessage, nil
+	return forwardedMessage, nil
 }
 
 // AddReaction aggiunge una reazione a un messaggio.
 func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error) {
-    var reaction Reaction
+	var reaction Reaction
 
-    // 1. Controlla che l'emoji sia valida (esempio base)
-    if len(emoji) == 0 || len(emoji) > 4 { // Emoji possono essere 4 byte
-        return reaction, fmt.Errorf("emoji non valida: %w", ErrBadRequest)
-    }
+	// 1. Controlla che l'emoji sia valida (esempio base)
+	if len(emoji) == 0 || len(emoji) > 4 { // Emoji possono essere 4 byte
+		return reaction, fmt.Errorf("emoji non valida: %w", ErrBadRequest)
+	}
 
-    // 2. Transazione
-    tx, err := db.c.Begin()
-    if err != nil {
-        return reaction, fmt.Errorf("could not begin transaction: %w", err)
-    }
-    defer tx.Rollback()
+	// 2. Transazione
+	tx, err := db.c.Begin()
+	if err != nil {
+		return reaction, fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// Annulla se qualcosa va storto
 
-    // 3. [Controllo 403] L'utente può vedere il messaggio?
-    //    (è membro della conversazione del messaggio?)
-    var isMember bool
-    err = tx.QueryRow(`
+	// 3. [Controllo 403] L'utente può vedere il messaggio?
+	//    (è membro della conversazione del messaggio?)
+	var isMember bool
+	err = tx.QueryRow(`
         SELECT EXISTS (
             SELECT 1 FROM conversation_members cm
             JOIN messages m ON cm.conversationId = m.conversationId
             WHERE m.id = ? AND cm.userId = ?
         )`, messageID, requestingUserID).Scan(&isMember)
 
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) { // Implicherebbe che il messaggio non esiste
-            return reaction, sql.ErrNoRows // 404
-        }
-        return reaction, fmt.Errorf("error checking reaction permission: %w", err)
-    }
-    if !isMember {
-        return reaction, ErrForbidden // 403
-    }
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) { // Implicherebbe che il messaggio non esiste
+			return reaction, sql.ErrNoRows // 404
+		}
+		return reaction, fmt.Errorf("error checking reaction permission: %w", err)
+	}
+	if !isMember {
+		return reaction, ErrForbidden // 403
+	}
 
-    // 4. Inserisci o Sostituisci (UPSERT)
-    // Cerchiamo prima se esiste già una reazione identica
-    var existingId string
-    err = tx.QueryRow(`SELECT id FROM reactions WHERE messageId = ? AND userId = ? AND emoji = ?`,
-        messageID, requestingUserID, emoji).Scan(&existingId)
+	// 4. Inserisci o Sostituisci (UPSERT)
+	// Cerchiamo prima se esiste già una reazione identica
+	var existingId string
+	err = tx.QueryRow(`SELECT id FROM reactions WHERE messageId = ? AND userId = ? AND emoji = ?`,
+		messageID, requestingUserID, emoji).Scan(&existingId)
 
-    if errors.Is(err, sql.ErrNoRows) {
-        // Non esiste, crea
-        reaction.ID = "react-" + uuid.New().String()
-        _, err = tx.Exec(`INSERT INTO reactions (id, messageId, userId, emoji) VALUES (?, ?, ?, ?)`,
-            reaction.ID, messageID, requestingUserID, emoji)
-    } else if err == nil {
-        // Esiste già, usa l'ID esistente
-        reaction.ID = existingId
-    } else {
-        // Errore
-        return reaction, fmt.Errorf("error checking existing reaction: %w", err)
-    }
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		// Non esiste, crea
+		reaction.ID = "react-" + uuid.New().String()
+		_, err = tx.Exec(`INSERT INTO reactions (id, messageId, userId, emoji) VALUES (?, ?, ?, ?)`,
+			reaction.ID, messageID, requestingUserID, emoji)
+	case err == nil:
+		// Esiste già, usa l'ID esistente
+		reaction.ID = existingId
+	default:
+		// Errore (diverso da ErrNoRows)
+		return reaction, fmt.Errorf("error checking existing reaction: %w", err)
+	}
 
-    if err != nil {
-        return reaction, fmt.Errorf("error upserting reaction: %w", err)
-    }
+	if err != nil {
+		return reaction, fmt.Errorf("error upserting reaction: %w", err)
+	}
 
-    // 5. Committa
-    if err = tx.Commit(); err != nil {
-        return reaction, fmt.Errorf("could not commit transaction: %w", err)
-    }
+	// 5. Committa
+	if err = tx.Commit(); err != nil {
+		return reaction, fmt.Errorf("could not commit transaction: %w", err)
+	}
 
-    // 6. Costruisci la risposta
-    user, err := db.GetUserByID(requestingUserID) 
-    if err != nil {
-        return reaction, fmt.Errorf("could not get reactor user details: %w", err)
-    }
+	// 6. Costruisci la risposta
+	user, err := db.GetUserByID(requestingUserID)
+	if err != nil {
+		return reaction, fmt.Errorf("could not get reactor user details: %w", err)
+	}
 
-    reaction.Emoji = emoji
-    reaction.User = user
+	reaction.Emoji = emoji
+	reaction.User = user
 
-    return reaction, nil
+	return reaction, nil
 }
 
 // RemoveReaction elimina una reazione.
 func (db *appdbimpl) RemoveReaction(requestingUserID string, reactionID string, messageID string) error {
-    // Esegui la cancellazione solo se l'ID reazione, l'ID messaggio
-    // e l'ID utente (proprietario) corrispondono.
-    // Questo previene che un utente cancelli la reazione di un altro (403).
-    res, err := db.c.Exec(`
+	// Esegui la cancellazione solo se l'ID reazione, l'ID messaggio
+	// e l'ID utente (proprietario) corrispondono.
+	// Questo previene che un utente cancelli la reazione di un altro (403).
+	res, err := db.c.Exec(`
         DELETE FROM reactions 
         WHERE id = ? AND messageId = ? AND userId = ?`,
-        reactionID, messageID, requestingUserID)
+		reactionID, messageID, requestingUserID)
 
-    if err != nil {
-        return fmt.Errorf("error deleting reaction: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("error deleting reaction: %w", err)
+	}
 
-    // Controlla se qualche riga è stata effettivamente cancellata
-    rowsAffected, err := res.RowsAffected()
-    if err != nil {
-        return fmt.Errorf("error checking affected rows: %w", err)
-    }
+	// Controlla se qualche riga è stata effettivamente cancellata
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking affected rows: %w", err)
+	}
 
-    if rowsAffected == 0 {
-        // 404 (non trovato) o 403 (non è tuo)
-        return sql.ErrNoRows 
-    }
+	if rowsAffected == 0 {
+		// 404 (non trovato) o 403 (non è tuo)
+		return sql.ErrNoRows
+	}
 
-    return nil // Successo
+	return nil // Successo
 }
 
 // CreateGroup crea una nuova conversazione di gruppo.
 func (db *appdbimpl) CreateGroup(requestingUserID string, groupName string, memberIds []string) (string, error) {
-    tx, err := db.c.Begin()
-    if err != nil {
-        return "", fmt.Errorf("could not begin transaction: %w", err)
-    }
-    defer tx.Rollback()
+	tx, err := db.c.Begin()
+	if err != nil {
+		return "", fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// Annulla se qualcosa va storto
 
-    // 1. Crea la conversazione (con isGroup = 1)
-    newConvID := "conv-" + uuid.New().String()
-    _, err = tx.Exec("INSERT INTO conversations (id, name, isGroup) VALUES (?, ?, 1)", newConvID, groupName)
-    if err != nil {
-        return "", fmt.Errorf("could not create group conversation: %w", err)
-    }
+	// 1. Crea la conversazione (con isGroup = 1)
+	newConvID := "conv-" + uuid.New().String()
+	_, err = tx.Exec("INSERT INTO conversations (id, name, isGroup) VALUES (?, ?, 1)", newConvID, groupName)
+	if err != nil {
+		return "", fmt.Errorf("could not create group conversation: %w", err)
+	}
 
-    // 2. Aggiungi il creatore al gruppo
-    _, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", newConvID, requestingUserID)
-    if err != nil {
-        return "", fmt.Errorf("could not add creator to group: %w", err)
-    }
+	// 2. Aggiungi il creatore al gruppo
+	_, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", newConvID, requestingUserID)
+	if err != nil {
+		return "", fmt.Errorf("could not add creator to group: %w", err)
+	}
 
-    // 3. Aggiungi tutti gli altri membri
-    stmt, err := tx.Prepare("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)")
-    if err != nil {
-        return "", fmt.Errorf("could not prepare member insert: %w", err)
-    }
-    defer stmt.Close()
+	// 3. Aggiungi tutti gli altri membri
+	stmt, err := tx.Prepare("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)")
+	if err != nil {
+		return "", fmt.Errorf("could not prepare member insert: %w", err)
+	}
+	defer stmt.Close()
 
-    for _, memberId := range memberIds {
-        if _, err = stmt.Exec(newConvID, memberId); err != nil {
-            // Se l'ID utente non esiste, questo fallirà (FOREIGN KEY constraint)
-            return "", fmt.Errorf("could not add member %s: %w", memberId, err)
-        }
-    }
+	for _, memberId := range memberIds {
+		if _, err = stmt.Exec(newConvID, memberId); err != nil {
+			// Se l'ID utente non esiste, questo fallirà (FOREIGN KEY constraint)
+			return "", fmt.Errorf("could not add member %s: %w", memberId, err)
+		}
+	}
 
-    // 4. Committa
-    if err = tx.Commit(); err != nil {
-        return "", fmt.Errorf("could not commit transaction: %w", err)
-    }
+	// 4. Committa
+	if err = tx.Commit(); err != nil {
+		return "", fmt.Errorf("could not commit transaction: %w", err)
+	}
 
-    return newConvID, nil
+	return newConvID, nil
 }
 
 // checkGroupAccess verifica se un utente è membro di un gruppo.
 // Restituisce ErrForbidden se non è membro, ErrBadRequest se non è un gruppo.
 func (db *appdbimpl) checkGroupAccess(tx *sql.Tx, requestingUserID string, convId string) error {
-    var isGroup bool
-    var isMember bool
+	var isGroup bool
+	var isMember bool
 
-    // Usiamo COALESCE per gestire i NULL (in caso di subquery vuote)
-    query := `
+	// Usiamo COALESCE per gestire i NULL (in caso di subquery vuote)
+	query := `
         SELECT
             (SELECT isGroup FROM conversations WHERE id = ?) AS isGroup,
             EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?) AS isMember`
-    
-    // Scegliamo se usare la transazione (tx) o la connessione (db.c)
-    var row *sql.Row
-    if tx != nil {
-        row = tx.QueryRow(query, convId, convId, requestingUserID)
-    } else {
-        row = db.c.QueryRow(query, convId, convId, requestingUserID)
-    }
 
-    if err := row.Scan(&isGroup, &isMember); err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return sql.ErrNoRows // 404
-        }
-        return err // 500
-    }
+	// Scegliamo se usare la transazione (tx) o la connessione (db.c)
+	var row *sql.Row
+	if tx != nil {
+		row = tx.QueryRow(query, convId, convId, requestingUserID)
+	} else {
+		row = db.c.QueryRow(query, convId, convId, requestingUserID)
+	}
 
-    if !isMember {
-        return ErrForbidden // 403
-    }
-    if !isGroup {
-        return ErrBadRequest // 400 (o 403 a seconda della logica)
-    }
-    return nil // Accesso consentito
+	if err := row.Scan(&isGroup, &isMember); err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return sql.ErrNoRows // 404
+		default:
+			return err // 500
+		}
+	}
+
+	if !isMember {
+		return ErrForbidden // 403
+	}
+	if !isGroup {
+		return ErrBadRequest // 400 (o 403 a seconda della logica)
+	}
+	return nil // Accesso consentito
 }
-
 
 // SetGroupName aggiorna il nome di un gruppo.
 func (db *appdbimpl) SetGroupName(requestingUserID string, convId string, newName string) error {
-    // 1. Controlla i permessi
-    if err := db.checkGroupAccess(nil, requestingUserID, convId); err != nil {
-        return err // Restituisce 403, 404, o 400
-    }
+	// 1. Controlla i permessi
+	if err := db.checkGroupAccess(nil, requestingUserID, convId); err != nil {
+		return err // Restituisce 403, 404, o 400
+	}
 
-    // 2. Aggiorna il nome
-    _, err := db.c.Exec("UPDATE conversations SET name = ? WHERE id = ?", newName, convId)
-    if err != nil {
-        return fmt.Errorf("error updating group name: %w", err)
-    }
-    return nil
+	// 2. Aggiorna il nome
+	_, err := db.c.Exec("UPDATE conversations SET name = ? WHERE id = ?", newName, convId)
+	if err != nil {
+		return fmt.Errorf("error updating group name: %w", err)
+	}
+	return nil
 }
 
 // SetGroupPhoto aggiorna la foto di un gruppo.
 func (db *appdbimpl) SetGroupPhoto(requestingUserID string, convId string, newPhotoURL string) error {
-    // 1. Controlla i permessi
-    if err := db.checkGroupAccess(nil, requestingUserID, convId); err != nil {
-        return err // Restituisce 403, 404, o 400
-    }
+	// 1. Controlla i permessi
+	if err := db.checkGroupAccess(nil, requestingUserID, convId); err != nil {
+		return err // Restituisce 403, 404, o 400
+	}
 
-    // 2. Aggiorna la foto
-    _, err := db.c.Exec("UPDATE conversations SET photoUrl = ? WHERE id = ?", newPhotoURL, convId)
-    if err != nil {
-        return fmt.Errorf("error updating group photo: %w", err)
-    }
-    return nil
+	// 2. Aggiorna la foto
+	_, err := db.c.Exec("UPDATE conversations SET photoUrl = ? WHERE id = ?", newPhotoURL, convId)
+	if err != nil {
+		return fmt.Errorf("error updating group photo: %w", err)
+	}
+	return nil
 }
 
 // AddGroupMember aggiunge un utente a un gruppo.
 func (db *appdbimpl) AddGroupMember(requestingUserID string, convId string, targetUserID string) error {
-    tx, err := db.c.Begin()
-    if err != nil {
-        return fmt.Errorf("could not begin transaction: %w", err)
-    }
-    defer tx.Rollback()
-    
-    // 1. Controlla i permessi
-    if err := db.checkGroupAccess(tx, requestingUserID, convId); err != nil {
-        return err // Restituisce 403, 404, o 400
-    }
+	tx, err := db.c.Begin()
+	if err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// Annulla se qualcosa va storto
 
-    // 2. Controlla che l'utente target esista (per 404)
-    exists, err := db.CheckUserExists(targetUserID)
-    if err != nil {
-        return err
-    }
-    if !exists {
-        return sql.ErrNoRows // 404
-    }
+	// 1. Controlla i permessi
+	if err := db.checkGroupAccess(tx, requestingUserID, convId); err != nil {
+		return err // Restituisce 403, 404, o 400
+	}
 
-    // 3. Inserisci il nuovo membro
-    _, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", convId, targetUserID)
-    if err != nil {
+	// 2. Controlla che l'utente target esista (per 404)
+	exists, err := db.CheckUserExists(targetUserID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return sql.ErrNoRows // 404
+	}
+
+	// 3. Inserisci il nuovo membro
+	_, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", convId, targetUserID)
+	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) {
 			// Il vincolo che stiamo violando è la PRIMARY KEY (convId, userId)
@@ -1047,29 +1073,32 @@ func (db *appdbimpl) AddGroupMember(requestingUserID string, convId string, targ
 		return fmt.Errorf("error adding member: %w", err)
 	}
 
-    return tx.Commit()
+	return tx.Commit()
 }
 
 // LeaveGroup rimuove l'utente autenticato da un gruppo.
 func (db *appdbimpl) LeaveGroup(requestingUserID string, convId string) error {
-    tx, err := db.c.Begin()
-    if err != nil {
-        return fmt.Errorf("could not begin transaction: %w", err)
-    }
-    defer tx.Rollback()
+	tx, err := db.c.Begin()
+	if err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// Annulla se qualcosa va storto
 
-    // 1. Controlla i permessi (verifica che sia membro e che sia un gruppo)
-    if err := db.checkGroupAccess(tx, requestingUserID, convId); err != nil {
-        return err
-    }
+	// 1. Controlla i permessi (verifica che sia membro e che sia un gruppo)
+	if err := db.checkGroupAccess(tx, requestingUserID, convId); err != nil {
+		return err
+	}
 
-    // 2. Rimuovi il membro
-    _, err = tx.Exec("DELETE FROM conversation_members WHERE conversationId = ? AND userId = ?", convId, requestingUserID)
-    if err != nil {
-        return fmt.Errorf("error leaving group: %w", err)
-    }
-    
-    // (Logica opzionale: se il gruppo è vuoto, cancellarlo? Per ora no)
-    
-    return tx.Commit()
+	// 2. Rimuovi il membro
+	_, err = tx.Exec("DELETE FROM conversation_members WHERE conversationId = ? AND userId = ?", convId, requestingUserID)
+	if err != nil {
+		return fmt.Errorf("error leaving group: %w", err)
+	}
+
+	// (Logica opzionale: se il gruppo è vuoto, cancellarlo? Per ora no)
+
+	return tx.Commit()
 }

@@ -1,10 +1,10 @@
 package api
 
 import (
-	"net/http" // Libreria per gestire richieste e risposte HTTP
+	"encoding/json"                       // Libreria per codificare e decodificare JSON
 	"github.com/julienschmidt/httprouter" // Router HTTP di terze parti
 	"github.com/marcoseverini/wasatext/service/database"
-	"encoding/json" // Libreria per codificare e decodificare JSON
+	"net/http" // Libreria per gestire richieste e risposte HTTP
 )
 
 // searchUsers è l'handler per GET /users
@@ -21,7 +21,7 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 	// Esegui la ricerca nel database
 	// Per questo endpoint, l'utente autenticato e quello cercato sono diversi.
 	// Assicuriamoci che l'utente non stia cercando se stesso (o gestiamo questo caso)
-	
+
 	// Prendiamo l'ID dell'utente che fa la richiesta (dal middleware)
 	requestingUserID, err := rt.getUserIdFromAuth(r)
 	if err != nil {
@@ -36,15 +36,15 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante la ricerca degli utenti.")
 		return
 	}
-	
-	// Filtra l'utente che fa la richiesta dai risultati 
+
+	// Filtra l'utente che fa la richiesta dai risultati
 	var filteredUsers []database.User
 	for _, user := range users {
 		if user.ID != requestingUserID {
 			filteredUsers = append(filteredUsers, user)
 		}
 	}
-	
+
 	// Restituisci la lista (filtrata)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

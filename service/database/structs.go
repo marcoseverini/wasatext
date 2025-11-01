@@ -29,7 +29,7 @@ type Conversation struct {
 // Message rappresenta un singolo messaggio.
 type Message struct {
 	ID          string     `json:"id"`
-	Sender      User       `json:"sender"` 
+	Sender      User       `json:"sender"`
 	Content     string     `json:"content"`
 	ContentType string     `json:"contentType"`
 	Timestamp   string     `json:"timestamp"`

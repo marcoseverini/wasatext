@@ -65,7 +65,6 @@ func (rt *_router) startConversation(w http.ResponseWriter, r *http.Request, _ h
 	_ = json.NewEncoder(w).Encode(conversationDetails)
 }
 
-
 // getMyConversations (GET /conversations)
 func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// 1. Prendi l'ID dell'utente che fa la richiesta (dal middleware)
@@ -81,7 +80,7 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, _ 
 		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore nel recuperare le conversazioni.")
 		return
 	}
-	
+
 	// 3. Restituisci la lista (sarà `[]` se vuota, che è corretto)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

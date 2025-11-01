@@ -63,12 +63,12 @@ func New(cfg Config) (Router, error) {
 	router.DELETE("/messages/:msgId", rt.authMiddleware(rt.deleteMessage))
 	router.POST("/conversations/:convId/forwarded-messages", rt.authMiddleware(rt.forwardMessage))
 	router.POST("/messages/:msgId/reactions", rt.authMiddleware(rt.commentMessage))
-    router.DELETE("/messages/:msgId/reactions/:reactionId", rt.authMiddleware(rt.uncommentMessage))
+	router.DELETE("/messages/:msgId/reactions/:reactionId", rt.authMiddleware(rt.uncommentMessage))
 	router.POST("/groups", rt.authMiddleware(rt.createGroup))
-    router.PUT("/conversations/:convId/name", rt.authMiddleware(rt.setGroupName))
-    router.PUT("/conversations/:convId/photo", rt.authMiddleware(rt.setGroupPhoto))
-    router.POST("/conversations/:convId/members", rt.authMiddleware(rt.addToGroup))
-    router.DELETE("/conversations/:convId/members/me", rt.authMiddleware(rt.leaveGroup))
+	router.PUT("/conversations/:convId/name", rt.authMiddleware(rt.setGroupName))
+	router.PUT("/conversations/:convId/photo", rt.authMiddleware(rt.setGroupPhoto))
+	router.POST("/conversations/:convId/members", rt.authMiddleware(rt.addToGroup))
+	router.DELETE("/conversations/:convId/members/me", rt.authMiddleware(rt.leaveGroup))
 
 	// Restituiamo il router configurato
 	return rt, nil
