@@ -30,7 +30,7 @@ type AppDatabase interface {
 	DeleteMessage(requestingUserID string, messageID string) error
 	ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error)
 	AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error)
-    RemoveReaction(requestingUserID string, reactionID string, messageID string, requestingUserID string) error
+    RemoveReaction(requestingUserID string, reactionID string, messageID string) error
 
 }
 
