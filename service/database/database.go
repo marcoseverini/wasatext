@@ -11,6 +11,7 @@ import (
 
 var ErrForbidden = errors.New("user is not a member of this conversation")
 var ErrBadRequest = errors.New("invalid request data")
+var ErrAlreadyMember = errors.New("user is already a member")
  
 // Interfaccia per comunicare con il database
 type AppDatabase interface {
@@ -31,6 +32,11 @@ type AppDatabase interface {
 	ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error)
 	AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error)
     RemoveReaction(requestingUserID string, reactionID string, messageID string) error
+	CreateGroup(requestingUserID string, groupName string, memberIds []string) (string, error)
+    SetGroupName(requestingUserID string, convId string, newName string) error
+    SetGroupPhoto(requestingUserID string, convId string, newPhotoURL string) error
+    AddGroupMember(requestingUserID string, convId string, targetUserID string) error
+    LeaveGroup(requestingUserID string, convId string) error
 
 }
 
@@ -893,4 +899,174 @@ func (db *appdbimpl) RemoveReaction(requestingUserID string, reactionID string, 
     }
 
     return nil // Successo
+}
+
+// CreateGroup crea una nuova conversazione di gruppo.
+func (db *appdbimpl) CreateGroup(requestingUserID string, groupName string, memberIds []string) (string, error) {
+    tx, err := db.c.Begin()
+    if err != nil {
+        return "", fmt.Errorf("could not begin transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    // 1. Crea la conversazione (con isGroup = 1)
+    newConvID := "conv-" + uuid.New().String()
+    _, err = tx.Exec("INSERT INTO conversations (id, name, isGroup) VALUES (?, ?, 1)", newConvID, groupName)
+    if err != nil {
+        return "", fmt.Errorf("could not create group conversation: %w", err)
+    }
+
+    // 2. Aggiungi il creatore al gruppo
+    _, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", newConvID, requestingUserID)
+    if err != nil {
+        return "", fmt.Errorf("could not add creator to group: %w", err)
+    }
+
+    // 3. Aggiungi tutti gli altri membri
+    stmt, err := tx.Prepare("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)")
+    if err != nil {
+        return "", fmt.Errorf("could not prepare member insert: %w", err)
+    }
+    defer stmt.Close()
+
+    for _, memberId := range memberIds {
+        if _, err = stmt.Exec(newConvID, memberId); err != nil {
+            // Se l'ID utente non esiste, questo fallirà (FOREIGN KEY constraint)
+            return "", fmt.Errorf("could not add member %s: %w", memberId, err)
+        }
+    }
+
+    // 4. Committa
+    if err = tx.Commit(); err != nil {
+        return "", fmt.Errorf("could not commit transaction: %w", err)
+    }
+
+    return newConvID, nil
+}
+
+// checkGroupAccess verifica se un utente è membro di un gruppo.
+// Restituisce ErrForbidden se non è membro, ErrBadRequest se non è un gruppo.
+func (db *appdbimpl) checkGroupAccess(tx *sql.Tx, requestingUserID string, convId string) error {
+    var isGroup bool
+    var isMember bool
+
+    // Usiamo COALESCE per gestire i NULL (in caso di subquery vuote)
+    query := `
+        SELECT
+            (SELECT isGroup FROM conversations WHERE id = ?) AS isGroup,
+            EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?) AS isMember`
+    
+    // Scegliamo se usare la transazione (tx) o la connessione (db.c)
+    var row *sql.Row
+    if tx != nil {
+        row = tx.QueryRow(query, convId, convId, requestingUserID)
+    } else {
+        row = db.c.QueryRow(query, convId, convId, requestingUserID)
+    }
+
+    if err := row.Scan(&isGroup, &isMember); err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return sql.ErrNoRows // 404
+        }
+        return err // 500
+    }
+
+    if !isMember {
+        return ErrForbidden // 403
+    }
+    if !isGroup {
+        return ErrBadRequest // 400 (o 403 a seconda della logica)
+    }
+    return nil // Accesso consentito
+}
+
+
+// SetGroupName aggiorna il nome di un gruppo.
+func (db *appdbimpl) SetGroupName(requestingUserID string, convId string, newName string) error {
+    // 1. Controlla i permessi
+    if err := db.checkGroupAccess(nil, requestingUserID, convId); err != nil {
+        return err // Restituisce 403, 404, o 400
+    }
+
+    // 2. Aggiorna il nome
+    _, err := db.c.Exec("UPDATE conversations SET name = ? WHERE id = ?", newName, convId)
+    if err != nil {
+        return fmt.Errorf("error updating group name: %w", err)
+    }
+    return nil
+}
+
+// SetGroupPhoto aggiorna la foto di un gruppo.
+func (db *appdbimpl) SetGroupPhoto(requestingUserID string, convId string, newPhotoURL string) error {
+    // 1. Controlla i permessi
+    if err := db.checkGroupAccess(nil, requestingUserID, convId); err != nil {
+        return err // Restituisce 403, 404, o 400
+    }
+
+    // 2. Aggiorna la foto
+    _, err := db.c.Exec("UPDATE conversations SET photoUrl = ? WHERE id = ?", newPhotoURL, convId)
+    if err != nil {
+        return fmt.Errorf("error updating group photo: %w", err)
+    }
+    return nil
+}
+
+// AddGroupMember aggiunge un utente a un gruppo.
+func (db *appdbimpl) AddGroupMember(requestingUserID string, convId string, targetUserID string) error {
+    tx, err := db.c.Begin()
+    if err != nil {
+        return fmt.Errorf("could not begin transaction: %w", err)
+    }
+    defer tx.Rollback()
+    
+    // 1. Controlla i permessi
+    if err := db.checkGroupAccess(tx, requestingUserID, convId); err != nil {
+        return err // Restituisce 403, 404, o 400
+    }
+
+    // 2. Controlla che l'utente target esista (per 404)
+    exists, err := db.CheckUserExists(targetUserID)
+    if err != nil {
+        return err
+    }
+    if !exists {
+        return sql.ErrNoRows // 404
+    }
+
+    // 3. Inserisci il nuovo membro
+    _, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", convId, targetUserID)
+    if err != nil {
+        // Controlla se l'errore è "UNIQUE constraint failed"
+        var sqliteErr sqlite3.Error
+        if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+            return ErrAlreadyMember // 409
+        }
+        return fmt.Errorf("error adding member: %w", err)
+    }
+
+    return tx.Commit()
+}
+
+// LeaveGroup rimuove l'utente autenticato da un gruppo.
+func (db *appdbimpl) LeaveGroup(requestingUserID string, convId string) error {
+    tx, err := db.c.Begin()
+    if err != nil {
+        return fmt.Errorf("could not begin transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    // 1. Controlla i permessi (verifica che sia membro e che sia un gruppo)
+    if err := db.checkGroupAccess(tx, requestingUserID, convId); err != nil {
+        return err
+    }
+
+    // 2. Rimuovi il membro
+    _, err = tx.Exec("DELETE FROM conversation_members WHERE conversationId = ? AND userId = ?", convId, requestingUserID)
+    if err != nil {
+        return fmt.Errorf("error leaving group: %w", err)
+    }
+    
+    // (Logica opzionale: se il gruppo è vuoto, cancellarlo? Per ora no)
+    
+    return tx.Commit()
 }

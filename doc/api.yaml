@@ -197,7 +197,7 @@ paths:
                 minItems: 0
                 maxItems: 100
 
-  /conversations/groups: 
+  /groups: 
     post:
       tags: ["groups"]
       summary: Create a new group
