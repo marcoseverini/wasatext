@@ -61,6 +61,9 @@ func New(cfg Config) (Router, error) {
 	router.POST("/conversations/:convId/messages", rt.authMiddleware(rt.sendMessage))
 	router.GET("/conversations/:convId", rt.authMiddleware(rt.getConversation))
 	router.DELETE("/messages/:msgId", rt.authMiddleware(rt.deleteMessage))
+	router.POST("/conversations/:convId/forwarded-messages", rt.authMiddleware(rt.forwardMessage))
+	router.POST("/messages/:msgId/reactions", rt.authMiddleware(rt.commentMessage))
+    router.DELETE("/messages/:msgId/reactions/:reactionId", rt.authMiddleware(rt.uncommentMessage))
 
 	// Restituiamo il router configurato
 	return rt, nil

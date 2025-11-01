@@ -29,3 +29,16 @@ type SetUsernameRequest struct {
 type SetPhotoRequest struct {
 	PhotoURL string `json:"photoUrl"` 
 }
+
+// Il JSON in entrata dalla richiesta POST /messages/{msgId}/forward
+// Corrisponde a #/components/schemas/ForwardMessageRequest
+type ForwardMessageRequest struct {
+    OriginalMessageId string `json:"originalMessageId"`
+}
+
+// Il JSON in entrata dalla richiesta POST /conversations/{convId}/reactions
+// Corrisponde a #/components/schemas/NewReactionRequest
+type NewReactionRequest struct {
+    Emoji string `json:"emoji"`
+}
+

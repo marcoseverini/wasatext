@@ -28,6 +28,9 @@ type AppDatabase interface {
 	GetConversationSummaries(userID string) ([]ConversationSummary, error)
 	SendMessage(senderId string, convId string, content string, contentType string, replyToMsgId *string) (Message, error)
 	DeleteMessage(requestingUserID string, messageID string) error
+	ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error)
+	AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error)
+    RemoveReaction(requestingUserID string, reactionID string, messageID string, requestingUserID string) error
 
 }
 
@@ -87,14 +90,31 @@ func New(db *sql.DB) (AppDatabase, error) {
 		content TEXT NOT NULL,
 		contentType TEXT NOT NULL DEFAULT 'text',
 		timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		replyToMsgId TEXT, 
+		replyToMsgId TEXT,
+		forwardedFromMsgId TEXT, -- AGGIUNGI QUESTA
 		FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE,
 		FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE,
-		FOREIGN KEY (replyToMsgId) REFERENCES messages(id) ON DELETE SET NULL
+		FOREIGN KEY (replyToMsgId) REFERENCES messages(id) ON DELETE SET NULL,
+		FOREIGN KEY (forwardedFromMsgId) REFERENCES messages(id) ON DELETE SET NULL -- AGGIUNGI QUESTA
 	);`
 	_, err = db.Exec(sqlStmt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating messages table: %w", err)
+	}
+
+	// Tabella Reazioni
+	sqlStmt = `CREATE TABLE IF NOT EXISTS reactions (
+		id TEXT NOT NULL PRIMARY KEY,
+		messageId TEXT NOT NULL,
+		userId TEXT NOT NULL,
+		emoji TEXT NOT NULL,
+		UNIQUE (messageId, userId, emoji),
+		FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE,
+		FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+	);`
+	_, err = db.Exec(sqlStmt)
+	if err != nil {
+		return nil, fmt.Errorf("error creating reactions table: %w", err)
 	}
 
 	// Ritorna un puntatore all'implementazione concreta del database (appdbimpl)
@@ -443,6 +463,9 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	defer msgRows.Close()
 
 	var messages []Message
+
+	messageMap := make(map[string]*Message) 
+
 	for msgRows.Next() {
 		var msg Message
 		var senderPhoto sql.NullString
@@ -451,9 +474,45 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 			return conversation, fmt.Errorf("could not scan message: %w", err)
 		}
 		msg.Sender.PhotoURL = senderPhoto.String
-		msg.Reactions = []Reaction{} // Per ora, lista reazioni vuota
+		msg.Reactions = []Reaction{} // Inizializza come array vuoto (per [] non null)
 		messages = append(messages, msg)
+		// Aggiungi un puntatore al messaggio nella mappa
+		messageMap[msg.ID] = &messages[len(messages)-1]
 	}
+	msgRows.Close() // Chiudi qui perché abbiamo finito con msgRows
+	
+
+	// 6. [MODIFICA] Prendi TUTTE le reazioni per questa conversazione in un'unica query
+	//    e uniscile ai messaggi in Go.
+	reactRows, err := db.c.Query(`
+		SELECT r.id, r.messageId, r.emoji,
+			u.id as reactorId, u.username as reactorUsername, u.photoUrl as reactorPhoto
+		FROM reactions r
+		JOIN users u ON r.userId = u.id
+		WHERE r.messageId IN (SELECT id FROM messages WHERE conversationId = ?)
+	`, conversationID)
+	if err != nil {
+		return conversation, fmt.Errorf("could not get reactions: %w", err)
+	}
+	defer reactRows.Close()
+
+	for reactRows.Next() {
+		var reaction Reaction
+		var msgId string
+		var reactorPhoto sql.NullString
+
+		if err := reactRows.Scan(&reaction.ID, &msgId, &reaction.Emoji,
+			&reaction.User.ID, &reaction.User.Username, &reactorPhoto); err != nil {
+			return conversation, fmt.Errorf("could not scan reaction: %w", err)
+		}
+		reaction.User.PhotoURL = reactorPhoto.String
+
+		// Aggiungi la reazione al messaggio corretto usando la mappa
+		if msgPtr, ok := messageMap[msgId]; ok {
+			msgPtr.Reactions = append(msgPtr.Reactions, reaction)
+		}
+	}
+
 	conversation.Messages = messages
 
 	if conversation.Members == nil {
@@ -650,4 +709,188 @@ func (db *appdbimpl) DeleteMessage(requestingUserID string, messageID string) er
 	}
 
 	return nil // Successo
+}
+
+// ForwardMessage inoltra un messaggio esistente in una nuova conversazione.
+func (db *appdbimpl) ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error) {
+    var originalMsg struct {
+        Content     string
+        ContentType string
+    }
+    var forwardedMessage Message
+
+    // 1. Inizia transazione
+    tx, err := db.c.Begin()
+    if err != nil {
+        return forwardedMessage, fmt.Errorf("could not begin transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    // 2. [Controllo 403 Target] L'utente è membro della chat di destinazione?
+    var isTargetMember bool
+    err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)",
+        targetConvId, requestingUserID).Scan(&isTargetMember)
+    if err != nil {
+        return forwardedMessage, fmt.Errorf("error checking target membership: %w", err)
+    }
+    if !isTargetMember {
+        // L'utente non è nella chat di destinazione
+        return forwardedMessage, ErrForbidden 
+    }
+
+    // 3. [Controllo 404/403 Source] L'utente può vedere il messaggio originale?
+    //    Recuperiamo il messaggio e verifichiamo che l'utente sia membro della chat *originale*.
+    err = tx.QueryRow(`
+        SELECT m.content, m.contentType
+        FROM messages m
+        JOIN conversation_members cm ON m.conversationId = cm.conversationId
+        WHERE m.id = ? AND cm.userId = ?`,
+        originalMessageId, requestingUserID).Scan(&originalMsg.Content, &originalMsg.ContentType)
+
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            // 404 (Messaggio non trovato o utente non membro della chat originale)
+            return forwardedMessage, sql.ErrNoRows 
+        }
+        return forwardedMessage, fmt.Errorf("error getting original message: %w", err)
+    }
+
+    // 4. Crea il nuovo messaggio (l'inoltro) nella chat di destinazione
+    newMsgId := "msg-" + uuid.New().String()
+    timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+
+    _, err = tx.Exec(`
+        INSERT INTO messages (id, conversationId, senderId, content, contentType, timestamp, forwardedFromMsgId)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        newMsgId, targetConvId, requestingUserID, originalMsg.Content, originalMsg.ContentType, timestamp, originalMessageId)
+    if err != nil {
+        return forwardedMessage, fmt.Errorf("error inserting forwarded message: %w", err)
+    }
+
+    // 5. Committa
+    if err = tx.Commit(); err != nil {
+        return forwardedMessage, fmt.Errorf("could not commit transaction: %w", err)
+    }
+
+    // 6. Recupera i dettagli del mittente (per la risposta JSON)
+    sender, err := db.GetUserByID(requestingUserID)
+    if err != nil {
+        return forwardedMessage, fmt.Errorf("could not get sender details: %w", err)
+    }
+
+    // 7. Costruisci e restituisci l'oggetto Message
+    forwardedMessage = Message{
+        ID:          newMsgId,
+        Sender:      sender,
+        Content:     originalMsg.Content,
+        ContentType: originalMsg.ContentType,
+        Timestamp:   timestamp,
+        Reactions:   []Reaction{}, // Messaggio nuovo, no reazioni
+    }
+
+    return forwardedMessage, nil
+}
+
+// AddReaction aggiunge una reazione a un messaggio.
+func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error) {
+    var reaction Reaction
+
+    // 1. Controlla che l'emoji sia valida (esempio base)
+    if len(emoji) == 0 || len(emoji) > 4 { // Emoji possono essere 4 byte
+        return reaction, fmt.Errorf("emoji non valida: %w", ErrBadRequest)
+    }
+
+    // 2. Transazione
+    tx, err := db.c.Begin()
+    if err != nil {
+        return reaction, fmt.Errorf("could not begin transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    // 3. [Controllo 403] L'utente può vedere il messaggio?
+    //    (è membro della conversazione del messaggio?)
+    var isMember bool
+    err = tx.QueryRow(`
+        SELECT EXISTS (
+            SELECT 1 FROM conversation_members cm
+            JOIN messages m ON cm.conversationId = m.conversationId
+            WHERE m.id = ? AND cm.userId = ?
+        )`, messageID, requestingUserID).Scan(&isMember)
+
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) { // Implicherebbe che il messaggio non esiste
+            return reaction, sql.ErrNoRows // 404
+        }
+        return reaction, fmt.Errorf("error checking reaction permission: %w", err)
+    }
+    if !isMember {
+        return reaction, ErrForbidden // 403
+    }
+
+    // 4. Inserisci o Sostituisci (UPSERT)
+    // Cerchiamo prima se esiste già una reazione identica
+    var existingId string
+    err = tx.QueryRow(`SELECT id FROM reactions WHERE messageId = ? AND userId = ? AND emoji = ?`,
+        messageID, requestingUserID, emoji).Scan(&existingId)
+
+    if errors.Is(err, sql.ErrNoRows) {
+        // Non esiste, crea
+        reaction.ID = "react-" + uuid.New().String()
+        _, err = tx.Exec(`INSERT INTO reactions (id, messageId, userId, emoji) VALUES (?, ?, ?, ?)`,
+            reaction.ID, messageID, requestingUserID, emoji)
+    } else if err == nil {
+        // Esiste già, usa l'ID esistente
+        reaction.ID = existingId
+    } else {
+        // Errore
+        return reaction, fmt.Errorf("error checking existing reaction: %w", err)
+    }
+
+    if err != nil {
+        return reaction, fmt.Errorf("error upserting reaction: %w", err)
+    }
+
+    // 5. Committa
+    if err = tx.Commit(); err != nil {
+        return reaction, fmt.Errorf("could not commit transaction: %w", err)
+    }
+
+    // 6. Costruisci la risposta
+    user, err := db.GetUserByID(requestingUserID) 
+    if err != nil {
+        return reaction, fmt.Errorf("could not get reactor user details: %w", err)
+    }
+
+    reaction.Emoji = emoji
+    reaction.User = user
+
+    return reaction, nil
+}
+
+// RemoveReaction elimina una reazione.
+func (db *appdbimpl) RemoveReaction(requestingUserID string, reactionID string, messageID string) error {
+    // Esegui la cancellazione solo se l'ID reazione, l'ID messaggio
+    // e l'ID utente (proprietario) corrispondono.
+    // Questo previene che un utente cancelli la reazione di un altro (403).
+    res, err := db.c.Exec(`
+        DELETE FROM reactions 
+        WHERE id = ? AND messageId = ? AND userId = ?`,
+        reactionID, messageID, requestingUserID)
+
+    if err != nil {
+        return fmt.Errorf("error deleting reaction: %w", err)
+    }
+
+    // Controlla se qualche riga è stata effettivamente cancellata
+    rowsAffected, err := res.RowsAffected()
+    if err != nil {
+        return fmt.Errorf("error checking affected rows: %w", err)
+    }
+
+    if rowsAffected == 0 {
+        // 404 (non trovato) o 403 (non è tuo)
+        return sql.ErrNoRows 
+    }
+
+    return nil // Successo
 }
