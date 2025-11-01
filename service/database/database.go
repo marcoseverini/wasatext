@@ -1036,13 +1036,16 @@ func (db *appdbimpl) AddGroupMember(requestingUserID string, convId string, targ
     // 3. Inserisci il nuovo membro
     _, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", convId, targetUserID)
     if err != nil {
-        // Controlla se l'errore è "UNIQUE constraint failed"
-        var sqliteErr sqlite3.Error
-        if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-            return ErrAlreadyMember // 409
-        }
-        return fmt.Errorf("error adding member: %w", err)
-    }
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			// Il vincolo che stiamo violando è la PRIMARY KEY (convId, userId)
+			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey {
+				return ErrAlreadyMember // 409
+			}
+		}
+		// Altro errore
+		return fmt.Errorf("error adding member: %w", err)
+	}
 
     return tx.Commit()
 }
