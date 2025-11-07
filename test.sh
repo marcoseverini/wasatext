@@ -12,9 +12,10 @@ COLOR_RED="\033[0;31m"
 COLOR_YELLOW="\033[0;33m"
 COLOR_NONE="\033[0m"
 
-echo_ok()    { echo -e "${COLOR_GREEN} $1${COLOR_NONE}"; }
-echo_fail()  { echo -e "${COLOR_RED} $1${COLOR_NONE}"; }
-echo_info()  { echo -e "${COLOR_YELLOW} $1${COLOR_NONE}"; }
+# --- CORREZIONE: Spazio rimosso dopo il colore ---
+echo_ok()    { echo -e "${COLOR_GREEN}$1${COLOR_NONE}"; }
+echo_fail()  { echo -e "${COLOR_RED}$1${COLOR_NONE}"; }
+echo_info()  { echo -e "${COLOR_YELLOW}$1${COLOR_NONE}"; }
 
 # Funzione per controllare lo status code
 assert_status() {
@@ -76,8 +77,7 @@ RES_CARLO_RAW=$(curl -s -v -X POST "$BASE_URL/session" -H "Content-Type: applica
 assert_status "$RES_CARLO_RAW" "201" "Login Carlo"
 JSON_CARLO=$(extract_body "$RES_CARLO_RAW") 
 TOKEN_CARLO=$(echo $JSON_CARLO | $JQ_CMD -r .identifier)
-# --- CORREZIONE QUI ---
-ID_CARLO=$(echo $JSON_CARLO | $JQ_CMD -r .identifier) # Questa riga mancava
+ID_CARLO=$(echo $JSON_CARLO | $JQ_CMD -r .identifier)
 
 # 1.4 Test Login (Nome breve) - 400
 echo_info "Test 1.4: Login 'io' (400 Bad Request)"
@@ -99,7 +99,7 @@ assert_status "$RES_RAW" "200" "setMyUsername"
 echo_info "Test 2.2: setMyUsername - Conflitto (409 Conflict)"
 RES_RAW=$(curl -s -v -X PUT "$BASE_URL/settings/username" \
     -H "Authorization: Bearer $TOKEN_MARIA" \
-    -H "Content-Type: application/json" -d '{"username": "Luca"}' 2>&1) # Prova a prendere il nome di Luca
+    -H "Content-Type: application/json" -d '{"username": "Luca"}' 2>&1) 
 assert_status "$RES_RAW" "409" "setMyUsername Conflitto"
 
 # 2.3 Test setMyPhoto (Successo) - 200
@@ -131,8 +131,7 @@ echo_info "Test 3.1: searchUsers 'Luca' (200 OK)"
 RES_RAW=$(curl -s -v -X GET "$BASE_URL/users?username=Luca" \
     -H "Authorization: Bearer $TOKEN_MARIA" 2>&1)
 assert_status "$RES_RAW" "200" "searchUsers"
-BODY=$(extract_body "$RES_RAW")
-echo "Risultati trovati: $BODY"
+# --- CORREZIONE: Echo rimosso ---
 
 # 3.2 Test searchUsers (Senza token) - 401
 echo_info "Test 3.2: searchUsers (401 Unauthorized)"
@@ -156,7 +155,7 @@ RES_CONV_RAW=$(curl -s -v -X POST "$BASE_URL/conversations" \
     -H "Content-Type: application/json" -d "{\"userId\": \"$ID_LUCA\"}" 2>&1)
 assert_status "$RES_CONV_RAW" "201" "startConversation"
 CONV_ID_1=$(extract_body "$RES_CONV_RAW" | $JQ_CMD -r .id)
-echo "ID Conversazione 1: $CONV_ID_1"
+# --- CORREZIONE: Echo rimosso ---
 
 # 4.2 Test startConversation (Utente non trovato) - 404
 echo_info "Test 4.2: startConversation (404 Not Found)"
@@ -172,7 +171,7 @@ RES_MSG_RAW=$(curl -s -v -X POST "$BASE_URL/conversations/$CONV_ID_1/messages" \
     -H "Content-Type: application/json" -d '{"text": "Ciao Luca!"}' 2>&1)
 assert_status "$RES_MSG_RAW" "201" "sendMessage"
 MSG_ID_1=$(extract_body "$RES_MSG_RAW" | $JQ_CMD -r .id)
-echo "ID Messaggio 1: $MSG_ID_1"
+# --- CORREZIONE: Echo rimosso ---
 
 # 4.4 Test sendMessage (Errore 403) - 403
 echo_info "Test 4.4: sendMessage (403 Forbidden)"
@@ -184,7 +183,7 @@ assert_status "$RES_RAW" "403" "sendMessage utente 403"
 # 4.5 Test getConversation (Successo) - 200
 echo_info "Test 4.5: getConversation (200 OK)"
 RES_RAW=$(curl -s -v -X GET "$BASE_URL/conversations/$CONV_ID_1" \
-    -H "Authorization: Bearer $TOKEN_LUCA" 2>&1) # Luca controlla la chat
+    -H "Authorization: Bearer $TOKEN_LUCA" 2>&1) 
 assert_status "$RES_RAW" "200" "getConversation"
 
 # 4.6 Test getMyConversations (Successo) - 200
@@ -192,8 +191,7 @@ echo_info "Test 4.6: getMyConversations (200 OK)"
 RES_RAW=$(curl -s -v -X GET "$BASE_URL/conversations" \
     -H "Authorization: Bearer $TOKEN_MARIA" 2>&1)
 assert_status "$RES_RAW" "200" "getMyConversations"
-BODY=$(extract_body "$RES_RAW")
-echo "Lista chat di Maria: $BODY"
+# --- CORREZIONE: Echo rimosso ---
 
 echo #
 
@@ -206,30 +204,30 @@ RES_REACT_RAW=$(curl -s -v -X POST "$BASE_URL/messages/$MSG_ID_1/reactions" \
     -H "Content-Type: application/json" -d '{"emoji": "👍"}' 2>&1)
 assert_status "$RES_REACT_RAW" "201" "commentMessage"
 REACT_ID=$(extract_body "$RES_REACT_RAW" | $JQ_CMD -r .id)
-echo "ID Reazione: $REACT_ID"
+# --- CORREZIONE: Echo rimosso ---
 
 # 5.2 Test uncommentMessage (Errore 403) - 403
 echo_info "Test 5.2: uncommentMessage (403 Forbidden)"
 RES_RAW=$(curl -s -v -X DELETE "$BASE_URL/messages/$MSG_ID_1/reactions/$REACT_ID" \
-    -H "Authorization: Bearer $TOKEN_MARIA" 2>&1) # Maria prova a togliere la reazione di Luca
+    -H "Authorization: Bearer $TOKEN_MARIA" 2>&1) 
 assert_status "$RES_RAW" "403" "uncommentMessage utente 403"
 
 # 5.3 Test uncommentMessage (Successo) - 204
 echo_info "Test 5.3: uncommentMessage (204 No Content)"
 RES_RAW=$(curl -s -v -X DELETE "$BASE_URL/messages/$MSG_ID_1/reactions/$REACT_ID" \
-    -H "Authorization: Bearer $TOKEN_LUCA" 2>&1) # Luca toglie la sua
+    -H "Authorization: Bearer $TOKEN_LUCA" 2>&1) 
 assert_status "$RES_RAW" "204" "uncommentMessage"
 
 # 5.4 Test deleteMessage (Errore 403) - 403
 echo_info "Test 5.4: deleteMessage (403 Forbidden)"
 RES_RAW=$(curl -s -v -X DELETE "$BASE_URL/messages/$MSG_ID_1" \
-    -H "Authorization: Bearer $TOKEN_LUCA" 2>&1) # Luca prova a cancellare il messaggio di Maria
+    -H "Authorization: Bearer $TOKEN_LUCA" 2>&1) 
 assert_status "$RES_RAW" "403" "deleteMessage utente 403"
 
 # 5.5 Test deleteMessage (Successo) - 204
 echo_info "Test 5.5: deleteMessage (204 No Content)"
 RES_RAW=$(curl -s -v -X DELETE "$BASE_URL/messages/$MSG_ID_1" \
-    -H "Authorization: Bearer $TOKEN_MARIA" 2>&1) # Maria cancella il suo
+    -H "Authorization: Bearer $TOKEN_MARIA" 2>&1) 
 assert_status "$RES_RAW" "204" "deleteMessage"
 
 echo #
@@ -243,7 +241,7 @@ RES_GROUP_RAW=$(curl -s -v -X POST "$BASE_URL/groups" \
     -H "Content-Type: application/json" -d "{\"groupName\": \"Gruppo Test\", \"memberIds\": [\"$ID_LUCA\"]}" 2>&1)
 assert_status "$RES_GROUP_RAW" "201" "createGroup"
 GROUP_ID=$(extract_body "$RES_GROUP_RAW" | $JQ_CMD -r .id)
-echo "ID Gruppo: $GROUP_ID"
+# --- CORREZIONE: Echo rimosso ---
 
 # 6.2 Test setGroupName (Successo) - 200
 echo_info "Test 6.2: setGroupName (200 OK)"
