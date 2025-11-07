@@ -1,21 +1,20 @@
 #!/bin/bash
 
 # Script di test di integrazione per l'API WASAText
-# Eseguire con: bash test.sh
 
-# --- Configurazione ---
+# Configurazione 
 BASE_URL="http://localhost:3000"
-JQ_CMD="jq" # Richiede 'jq' installato (es. 'apt install jq')
+JQ_CMD="jq" # Richiede 'jq' installato
 
-# --- Funzioni Helper per i colori ---
+# Funzioni Helper per i colori
 COLOR_GREEN="\033[0;32m"
 COLOR_RED="\033[0;31m"
 COLOR_YELLOW="\033[0;33m"
 COLOR_NONE="\033[0m"
 
-echo_ok()    { echo -e "${COLOR_GREEN}✅ $1${COLOR_NONE}"; }
-echo_fail()  { echo -e "${COLOR_RED}❌ $1${COLOR_NONE}"; }
-echo_info()  { echo -e "${COLOR_YELLOW}ℹ️ $1${COLOR_NONE}"; }
+echo_ok()    { echo -e "${COLOR_GREEN} $1${COLOR_NONE}"; }
+echo_fail()  { echo -e "${COLOR_RED} $1${COLOR_NONE}"; }
+echo_info()  { echo -e "${COLOR_YELLOW} $1${COLOR_NONE}"; }
 
 # Funzione per controllare lo status code
 assert_status() {
@@ -40,7 +39,7 @@ extract_body() {
     echo "$1" | grep "^[{\[]" | tail -n 1
 }
 
-# Assicurati che il server sia raggiungibile
+# Funzione per verificare che il server sia raggiungibile
 echo_info "Ping del server su $BASE_URL..."
 curl -s --head $BASE_URL/session > /dev/null
 if [ $? -ne 0 ]; then
@@ -48,12 +47,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo_info "--- Inizio Test di Integrazione ---"
+echo_info "Inizio Test di Integrazione"
 echo_info "(Assicurati di aver cancellato il file .db per un test pulito)"
 
-# ===============================================
-echo_info "Blocco 1: Login e Setup Utenti"
-# ===============================================
+echo #
+
+echo_info "Blocco 1: login"
 
 # 1.1 Test Login (Maria) - 201
 echo_info "Test 1.1: Login 'Maria' (201)"
@@ -85,9 +84,9 @@ echo_info "Test 1.4: Login 'io' (400 Bad Request)"
 RES_ERR_RAW=$(curl -s -v -X POST "$BASE_URL/session" -H "Content-Type: application/json" -d '{"username": "io"}' 2>&1)
 assert_status "$RES_ERR_RAW" "400" "Login nome breve"
 
-# ===============================================
+echo #
+
 echo_info "Blocco 2: Settings (setMyUsername, setMyPhoto)"
-# ===============================================
 
 # 2.1 Test setMyUsername (Successo) - 200
 echo_info "Test 2.1: setMyUsername (200 OK)"
@@ -123,9 +122,9 @@ RES_RAW=$(curl -s -v -X PUT "$BASE_URL/settings/username" \
     -H "Content-Type: application/json" -d '{"username": "MariaFAIL"}' 2>&1)
 assert_status "$RES_RAW" "401" "setMyUsername senza token"
 
-# ===============================================
-echo_info "Blocco 3: Users (searchUsers)"
-# ===============================================
+echo #
+
+echo_info "Blocco 3: users"
 
 # 3.1 Test searchUsers (Successo) - 200
 echo_info "Test 3.1: searchUsers 'Luca' (200 OK)"
@@ -146,9 +145,9 @@ RES_RAW=$(curl -s -v -X GET "$BASE_URL/users?username=" \
     -H "Authorization: Bearer $TOKEN_MARIA" 2>&1)
 assert_status "$RES_RAW" "400" "searchUsers query non valida"
 
-# ===============================================
-echo_info "Blocco 4: Conversazioni (1-a-1 e Messaggi)"
-# ===============================================
+echo #
+
+echo_info "Blocco 4: conversations"
 
 # 4.1 Test startConversation (Successo) - 201
 echo_info "Test 4.1: startConversation Maria+Luca (201 Created)"
@@ -196,9 +195,9 @@ assert_status "$RES_RAW" "200" "getMyConversations"
 BODY=$(extract_body "$RES_RAW")
 echo "Lista chat di Maria: $BODY"
 
-# ===============================================
-echo_info "Blocco 5: Reazioni e Delete Messaggi"
-# ===============================================
+echo #
+
+echo_info "Blocco 5: messages"
 
 # 5.1 Test commentMessage (Successo) - 201
 echo_info "Test 5.1: commentMessage (201 Created)"
@@ -233,9 +232,9 @@ RES_RAW=$(curl -s -v -X DELETE "$BASE_URL/messages/$MSG_ID_1" \
     -H "Authorization: Bearer $TOKEN_MARIA" 2>&1) # Maria cancella il suo
 assert_status "$RES_RAW" "204" "deleteMessage"
 
-# ===============================================
-echo_info "Blocco 6: Gruppi"
-# ===============================================
+echo #
+
+echo_info "Blocco 6: groups"
 
 # 6.1 Test createGroup (Successo) - 201
 echo_info "Test 6.1: createGroup Maria+Luca (201 Created)"
@@ -279,4 +278,6 @@ RES_RAW=$(curl -s -v -X DELETE "$BASE_URL/conversations/$GROUP_ID/members/me" \
     -H "Authorization: Bearer $TOKEN_CARLO" 2>&1)
 assert_status "$RES_RAW" "403" "leaveGroup utente 403"
 
-echo_ok "--- Tutti i test sono stati superati! ---"
+echo #
+
+echo_ok "Tutti i test sono stati superati."
