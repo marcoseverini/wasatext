@@ -34,7 +34,7 @@ paths:
       description: |-
         Se l'utente esiste, viene restituito il suo identificativo.
         Se l'utente non esiste, viene creato e viene restituito il suo identificativo.
-      operationId: doLogin
+      operationId: login
       security: [] # Nessuna autenticazione richiesta per il login
       requestBody:
         description: Dettagli dell'utente per il login/registrazione.
@@ -44,26 +44,30 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
       responses:
-        '201':
+        '201': 
           description: Azione di login/registrazione avvenuta con successo.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
+        '400': 
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /settings/username:
     put:
       tags: ["settings"] 
       summary: Set my username
       description: Aggiorna il nome utente dell'utente autenticato.
-      operationId: setMyUserName
+      operationId: setMyUsername
       requestBody:
         description: Il nuovo username desiderato.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SetUsernameRequest'
+              $ref: '#/components/schemas/SetMyUsernameRequest'
       responses:
         '200':
           description: Username aggiornato con successo.
@@ -71,18 +75,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
-        '400':
-          description: Formato username non valido.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '409':
-          description: Username già in uso da un altro utente.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Conflict'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /settings/photo:
     put:
@@ -105,11 +105,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: L'URL fornito non è valido.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /users: 
     get:
@@ -118,16 +118,7 @@ paths:
       description: Cerca utenti in base a una parte del loro username.
       operationId: searchUsers 
       parameters:
-        - name: username
-          in: query
-          required: true
-          description: Stringa da cercare nel nome utente (case-insensitive). 
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
-            maxLength: 16
-            example: "Mar"
+        - $ref: '#/components/parameters/SearchUsername'
       responses:
         '200':
           description: Lista di utenti che corrispondono alla ricerca. Può essere vuota.
@@ -140,6 +131,12 @@ paths:
                   $ref: '#/components/schemas/User'
                 minItems: 0
                 maxItems: 100
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /conversations: 
     post:
@@ -148,23 +145,14 @@ paths:
       description: |-
         Inizia una nuova conversazione con un altro utente specificato tramite il suo ID. 
         Se la conversazione esiste già, viene restituita quella esistente.
-      operationId: startConversation 
+      operationId: startConversation
       requestBody:
         description: L'ID dell'utente con cui iniziare la chat.
         required: true
         content:
           application/json:
             schema:
-              type: object
-              description: Contiene l'ID dell'utente target.
-              properties:
-                userId:
-                  type: string
-                  description: "ID univoco dell'utente con cui avviare la chat."
-                  pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$'
-                  minLength: 36
-                  maxLength: 36
-              required: ["userId"]
+              $ref: '#/components/schemas/UserIdRequest'
       responses:
         '201':
           description: Conversazione creata o già esistente recuperata con successo.
@@ -173,11 +161,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Conversation'
         '404':
-          description: L'utente specificato non esiste.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
     get:
       tags: ["conversations"] 
@@ -196,6 +186,10 @@ paths:
                   $ref: '#/components/schemas/ConversationSummary'
                 minItems: 0
                 maxItems: 100
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /groups: 
     post:
@@ -209,7 +203,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewGroupRequest'
+              $ref: '#/components/schemas/CreateGroupRequest'
       responses:
         '201':
           description: Gruppo creato con successo.
@@ -218,11 +212,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Conversation'
         '400':
-          description: Dati non validi (es. nome gruppo vuoto, lista membri vuota o con ID duplicati/non validi).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /conversations/{convId}:
     get:
@@ -231,14 +225,7 @@ paths:
       description: Ritorna i dettagli completi (inclusi tutti i messaggi in ordine cronologico inverso) di una singola conversazione di cui l'utente autenticato è membro.
       operationId: getConversation
       parameters:
-        - name: convId
-          in: path
-          required: true
-          description: ID univoco della conversazione da recuperare.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
+        - $ref: '#/components/parameters/ConvID'
       responses:
         '200':
           description: Dettagli e messaggi della conversazione richiesti.
@@ -247,17 +234,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/Conversation'
         '403':
-          description: L'utente autenticato non è membro di questa conversazione.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Conversazione con l'ID specificato non trovata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /conversations/{convId}/messages:
     post:
@@ -266,22 +251,14 @@ paths:
       description: Invia un nuovo messaggio (testo o URL foto) in una conversazione specificata, a cui l'utente autenticato appartiene. Può opzionalmente essere una risposta a un messaggio esistente.
       operationId: sendMessage
       parameters:
-        - name: convId
-          in: path
-          required: true
-          description: ID della conversazione in cui inviare il messaggio.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
-            maxLength: 50
+        - $ref: '#/components/parameters/ConvID'
       requestBody:
         description: Contenuto del messaggio (testo o URL foto) e ID opzionale del messaggio a cui rispondere.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewMessageRequest'
+              $ref: '#/components/schemas/SendMessageRequest' 
       responses:
         '201':
           description: Messaggio inviato con successo. Restituisce il messaggio creato.
@@ -289,24 +266,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
-        '400':
-          description: Richiesta non valida (es. manca testo e foto, ID risposta non valido).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '403':
-          description: L'utente autenticato non è membro di questa conversazione.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Conversazione non trovata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /conversations/{convId}/forwarded-messages:
     post:
@@ -315,15 +284,7 @@ paths:
       description: Inoltra un messaggio esistente (identificato dal suo ID) in una conversazione specificata, a cui l'utente autenticato appartiene.
       operationId: forwardMessage
       parameters:
-        - name: convId
-          in: path
-          required: true
-          description: ID della conversazione di destinazione dell'inoltro.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
-            maxLength: 50
+        - $ref: '#/components/parameters/ConvID'
       requestBody:
         description: L'ID del messaggio originale da inoltrare.
         required: true
@@ -339,72 +300,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/Message'
         '403':
-          description: L'utente autenticato non è membro della conversazione di destinazione.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Messaggio originale o conversazione di destinazione non trovati.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /messages/{msgId}:
     delete:
       tags: ["messages"] 
       summary: Delete a message
-      description: Cancella un messaggio inviato dall'utente autenticato. L'operazione potrebbe essere logica (nascondere il messaggio) o fisica.
+      description: Cancella un messaggio inviato dall'utente autenticato. 
       operationId: deleteMessage
       parameters:
-        - name: msgId
-          in: path
-          required: true
-          description: ID del messaggio da cancellare.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
-            maxLength: 50
+        - $ref: '#/components/parameters/MsgID'
       responses:
         '204':
           description: Messaggio cancellato con successo. Nessun contenuto restituito.
         '403':
-          description: L'utente autenticato non è il mittente del messaggio specificato.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Messaggio non trovato.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   
   /messages/{msgId}/reactions:
     post:
       tags: ["messages"]
       summary: React to a message
-      description: Aggiunge una reazione (emoji) a un messaggio specificato, a nome dell'utente autenticato. Se l'utente ha già reagito con la stessa emoji, non succede nulla (o la reazione viene aggiornata).
+      description: Aggiunge una reazione (emoji) a un messaggio specificato, a nome dell'utente autenticato. Se l'utente ha già reagito con la stessa emoji, non succede nulla.
       operationId: commentMessage
       parameters:
-        - name: msgId
-          in: path
-          required: true
-          description: ID del messaggio a cui aggiungere la reazione.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
+        - $ref: '#/components/parameters/MsgID'
       requestBody:
         description: L'emoji della reazione.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NewReactionRequest'
+              $ref: '#/components/schemas/CommentMessageRequest' 
       responses:
         '201':
           description: Reazione aggiunta/aggiornata con successo. Restituisce la reazione creata/aggiornata.
@@ -412,18 +354,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Reaction'
-        '400':
-          description: Emoji non valida.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '404':
-          description: Messaggio non trovato.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /messages/{msgId}/reactions/{reactionId}:
     delete:
@@ -432,37 +370,21 @@ paths:
       description: Rimuove una reazione (identificata dal suo ID) da un messaggio specificato. L'operazione è permessa solo all'utente che ha creato quella reazione.
       operationId: uncommentMessage
       parameters:
-        - name: msgId
-          in: path
-          required: true
-          description: ID del messaggio da cui rimuovere la reazione.
-          schema:
-            type: string
-            minLength: 1
-        - name: reactionId
-          in: path
-          required: true
-          description: ID della reazione da rimuovere.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
-            maxLength: 50
+        - $ref: '#/components/parameters/MsgID'
+        - $ref: '#/components/parameters/ReactionID'
       responses:
         '204':
           description: Reazione rimossa con successo. Nessun contenuto restituito.
         '403':
-          description: L'utente autenticato non è il proprietario della reazione specificata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Messaggio o reazione non trovati.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /conversations/{convId}/name:
     put:
@@ -471,14 +393,7 @@ paths:
       description: Aggiorna il nome di una conversazione di gruppo specificata. L'utente autenticato deve essere membro del gruppo.
       operationId: setGroupName
       parameters:
-        - name: convId
-          in: path
-          required: true
-          description: ID del gruppo da rinominare.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
+        - $ref: '#/components/parameters/ConvID'
       requestBody:
         description: Il nuovo nome desiderato per il gruppo.
         required: true
@@ -493,24 +408,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conversation'
-        '400':
-          description: Nuovo nome non valido (es. vuoto).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '403':
-          description: L'utente autenticato non è membro di questo gruppo (o non è un gruppo).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Conversazione (gruppo) non trovata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   
   /conversations/{convId}/photo:
     put:
@@ -519,14 +426,7 @@ paths:
       description: Aggiorna l'URL della foto di una conversazione di gruppo specificata. L'utente autenticato deve essere membro del gruppo.
       operationId: setGroupPhoto
       parameters:
-        - name: convId
-          in: path
-          required: true
-          description: ID del gruppo di cui aggiornare la foto.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
+        - $ref: '#/components/parameters/ConvID'
       requestBody:
         description: Il nuovo URL della foto del gruppo.
         required: true
@@ -541,24 +441,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Conversation'
-        '400':
-          description: URL non valido.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '403':
-          description: L'utente autenticato non è membro di questo gruppo (o non è un gruppo).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Conversazione (gruppo) non trovata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /conversations/{convId}/members:
     post:
@@ -567,42 +459,29 @@ paths:
       description: Aggiunge un utente specificato (tramite ID) a una conversazione di gruppo. L'utente autenticato deve essere membro del gruppo.
       operationId: addToGroup
       parameters:
-        - name: convId
-          in: path
-          required: true
-          description: ID del gruppo a cui aggiungere il membro.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
+        - $ref: '#/components/parameters/ConvID'
       requestBody:
         description: L'ID dell'utente da aggiungere al gruppo.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddMemberRequest'
+              $ref: '#/components/schemas/UserIdRequest'
       responses:
         '204': 
           description: Membro aggiunto con successo. Nessun contenuto restituito.
         '403':
-          description: L'utente autenticato non è membro di questo gruppo o non ha i permessi per aggiungere membri (o non è un gruppo).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Utente da aggiungere o gruppo non trovato.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: L'utente specificato è già membro del gruppo.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Conflict'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /conversations/{convId}/members/me:
     delete:
@@ -611,159 +490,203 @@ paths:
       description: Permette all'utente autenticato di abbandonare una conversazione di gruppo specificata.
       operationId: leaveGroup
       parameters:
-        - name: convId
-          in: path
-          required: true
-          description: ID del gruppo da abbandonare.
-          schema:
-            type: string
-            pattern: '^.+$'
-            minLength: 1
+        - $ref: '#/components/parameters/ConvID'
       responses:
         '204':
           description: Gruppo abbandonato con successo. Nessun contenuto restituito.
         '403':
-          description: L'utente autenticato non è membro di questo gruppo (o non è un gruppo).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Conversazione (gruppo) non trovata.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
 components:
 
   securitySchemes:
+
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: "string"
       description: "L'identificativo utente (ottenuto dal login) da usare come Bearer token nell'header `Authorization: Bearer <identifier>`."
+    
+  parameters:
+
+    ConvID:
+      name: convId
+      in: path
+      required: true
+      description: ID univoco della conversazione.
+      schema:
+        $ref: '#/components/schemas/InternalID' 
+        
+    MsgID:
+      name: msgId
+      in: path
+      required: true
+      description: ID univoco del messaggio.
+      schema:
+        $ref: '#/components/schemas/InternalID'
+
+    ReactionID:
+      name: reactionId
+      in: path
+      required: true
+      description: ID univoco della reazione.
+      schema:
+        $ref: '#/components/schemas/InternalID'
+        
+    SearchUsername:
+      name: username
+      in: query
+      required: true
+      description: Stringa da cercare nel nome utente (case-insensitive).
+      schema:
+        $ref: '#/components/schemas/Username'
+
+  responses:
+
+    BadRequest: # 400
+      description: Formato dei dati non valido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized: # 401
+      description: Autenticazione richiesta o token non valido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden: # 403
+      description: Non hai i permessi per eseguire questa azione.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound: # 404
+      description: La risorsa richiesta non è stata trovata.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Conflict: # 409
+      description: La risorsa esiste già o è in conflitto.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError: # 500
+      description: Errore interno del server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
 
-    Error:
-      description: Schema generico per le risposte di errore.
-      type: object
-      properties:
-        message:
-          type: string
-          description: Messaggio descrittivo dell'errore.
-          minLength: 1
-          maxLength: 256
-          pattern: '^.+$'
-          example: "Si è verificato un errore."
-      required: ["message"]
 
-    LoginRequest:
-      description: Dati inviati per effettuare il login o la registrazione.
-      type: object
-      properties:
-        name: 
-          type: string
-          description: Il nome utente scelto. Deve essere univoco.
-          example: Maria
-          pattern: '^.*?$' 
-          minLength: 3
-          maxLength: 16
-      required: ["name"] 
+    # Tipi Base (service/api/schemas.go)
+
+    UserID:
+      description: ID univoco in formato UUID (usato per utenti e bearer token).
+      type: string
+      pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$'
+      minLength: 36
+      maxLength: 36
+      example: "abcdef01-2345-6789-abcd-ef0123456789"
+    
+    InternalID:
+      description: ID univoco generato dal sistema (per conversazioni, messaggi, reazioni).
+      type: string
+      pattern: '^.+$'
+      minLength: 1
+      maxLength: 50
+      example: "msg-789"
+
+    Username:
+      description: Nome univoco scelto dall'utente.
+      type: string
+      pattern: '^.+$'
+      minLength: 3
+      maxLength: 16
+      example: "Maria"
       
-    LoginResponse:
-      description: Risposta al login/registrazione, contenente l'identificativo univoco dell'utente.
-      type: object
-      properties:
-        identifier:
-          type: string
-          description: L'ID univoco assegnato all'utente, da usare come Bearer token. Formato UUID.
-          example: "abcdef01-2345-6789-abcd-ef0123456789"
-          pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$'
-          minLength: 36 
-          maxLength: 36 
-      required: ["identifier"]
+    PhotoURL:
+      description: URL di un'immagine (foto profilo o messaggio).
+      type: string
+      format: uri
+      pattern: '^.+$'
+      minLength: 1
+      maxLength: 2048
+      example: "https://example.com/photos/image.jpg"
+    
+    Emoji:
+      description: Un singolo carattere emoji per una reazione.
+      type: string
+      pattern: '^.+$'
+      minLength: 1
+      maxLength: 4
+      example: "👍"
+      
+    Timestamp:
+      description: Data e ora in formato ISO 8601 UTC.
+      type: string
+      format: date-time
+      pattern: '^.+$'
+      example: "2024-10-20T10:30:00Z"
+
+    GroupName:
+      description: Nome di una conversazione o di un gruppo.
+      type: string
+      pattern: '^.+$'
+      minLength: 1
+      maxLength: 50
+      example: "Gruppo Lavoro"
+      
+    MessageContent:
+      description: Contenuto testuale di un messaggio.
+      type: string
+      pattern: '^.+$'
+      minLength: 1
+      maxLength: 4000
+      example: "Ciao!"
+
+
+    # Strutture del Database (service/database/structs.go)
 
     User:
       description: Rappresenta un utente registrato nel sistema.
       type: object
       properties:
         id:
-          type: string
-          description: ID univoco dell'utente (formato UUID).
-          pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$' 
-          minLength: 36
-          maxLength: 36
-          example: "abcdef01-2345-6789-abcd-ef0123456789"
+          $ref: '#/components/schemas/UserID'
         username:
-          type: string
-          description: Nome univoco scelto dall'utente.
-          pattern: '^.+$'
-          minLength: 3
-          maxLength: 16
-          example: "Maria"
+          $ref: '#/components/schemas/Username'
         photoUrl:
-          type: string
-          format: uri
-          description: URL (opzionale) dell'immagine del profilo utente. Deve essere un URI valido.
-          pattern: '^.+$'
-          maxLength: 2048 
-          example: "https://example.com/photos/maria.png"
+          $ref: '#/components/schemas/PhotoURL'
       required: ["id", "username"]
-      
-    SetUsernameRequest:
-      description: Dati inviati per aggiornare il nome utente.
-      type: object
-      properties:
-        username:
-          type: string
-          description: Il nuovo nome utente desiderato.
-          pattern: '^.+$'
-          minLength: 3
-          maxLength: 16
-          example: "Maria99"
-      required: ["username"]
-
-    SetPhotoRequest:
-      description: Dati inviati per aggiornare l'URL della foto profilo (utente o gruppo).
-      type: object
-      properties:
-        photoUrl:
-          type: string
-          format: uri
-          description: Il nuovo URL dell'immagine. Deve essere un URI valido.
-          pattern: '^.+$'
-          maxLength: 2048 
-          example: "https://example.com/photos/new_photo.png"
-      required: ["photoUrl"]
 
     ConversationSummary:
       description: Rappresenta l'anteprima di una conversazione nella lista principale.
       type: object
       properties:
         id:
-          type: string
-          description: ID univoco della conversazione.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50 
-          example: "conv-456"
+          $ref: '#/components/schemas/InternalID'
         name:
-          type: string
-          description: Nome della conversazione (nome del gruppo o dell'altro utente in chat 1-1).
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50
-          example: "Gruppo Lavoro"
+          $ref: '#/components/schemas/GroupName'
         photoUrl:
-          type: string
-          format: uri
-          description: URL (opzionale) dell'immagine della conversazione (foto gruppo o foto altro utente).
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 2048
-          example: "https://example.com/photos/gruppo.png"
+          $ref: '#/components/schemas/PhotoURL'
         latestMessageSnippet:
           type: string
           description: Anteprima testuale dell'ultimo messaggio o indicazione generica (es. "Foto", "GIF"). Non presente se non ci sono messaggi.
@@ -771,39 +694,19 @@ components:
           maxLength: 100
           example: "Ciao, tutto bene?"
         latestMessageTimestamp:
-          type: string
-          format: date-time
-          description: Data e ora dell'ultimo messaggio inviato nella conversazione (formato ISO 8601 UTC). Non presente se non ci sono messaggi.
-          pattern: '^.+$'
-          example: "2024-10-20T10:30:00Z"
+          $ref: '#/components/schemas/Timestamp'
       required: ["id", "name"]
 
-    Conversation:
+      Conversation:
       description: Rappresenta i dettagli completi di una singola conversazione, inclusi membri e messaggi.
       type: object
       properties:
         id:
-          type: string
-          description: ID univoco della conversazione.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50
-          example: "conv-4D"
+          $ref: '#/components/schemas/InternalID'
         name:
-          type: string
-          description: Nome della conversazione.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50
-          example: "Gruppo Lavoro"
+          $ref: '#/components/schemas/GroupName'
         photoUrl:
-          type: string
-          format: uri
-          description: URL (opzionale) dell'immagine della conversazione.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 2048
-          example: "https://example.com/photos/gruppo.png"
+          $ref: '#/components/schemas/PhotoURL'
         isGroup:
           type: boolean
           description: Indica se si tratta di una conversazione di gruppo (`true`) o 1-1 (`false`).
@@ -823,80 +726,17 @@ components:
           items:
             $ref: '#/components/schemas/Message'
       required: ["id", "name", "isGroup", "members", "messages"]
-      
-    NewGroupRequest:
-      description: Dati inviati per creare una nuova conversazione di gruppo.
-      type: object
-      properties:
-        groupName:
-          type: string
-          description: Il nome da assegnare al nuovo gruppo.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50
-          example: "Amici"
-        memberIds:
-          type: array
-          description: Lista degli ID (univoci) degli utenti da aggiungere al gruppo (oltre all'utente che crea).
-          minItems: 1 
-          maxItems: 99 
-          items:
-            type: string
-            description: ID univoco di un utente (formato UUID).
-            pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$' 
-            minLength: 36
-            maxLength: 36
-          example: ["abcdef01-2345-6789-abcd-ef0123456789"]
-      required: ["groupName", "memberIds"]
-
-    AddMemberRequest:
-      description: Dati inviati per aggiungere un membro a un gruppo esistente.
-      type: object
-      properties:
-        userId:
-          type: string
-          description: ID univoco dell'utente da aggiungere al gruppo (formato UUID).
-          pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$'
-          minLength: 36
-          maxLength: 36
-          example: "abcdef01-2345-6789-abcd-ef0123456789"
-      required: ["userId"]
-      
-    SetGroupNameRequest:
-      description: Dati inviati per rinominare un gruppo.
-      type: object
-      properties:
-        name:
-          type: string
-          description: Il nuovo nome desiderato per il gruppo.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50
-          example: "Nuovo Nome Gruppo"
-      required: ["name"]
 
     Message:
       description: Rappresenta un singolo messaggio all'interno di una conversazione.
       type: object
       properties:
         id:
-          type: string
-          description: ID univoco del messaggio.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50 
-          example: "msg-789"
+          $ref: '#/components/schemas/InternalID'
         sender:
-          allOf:
-            - $ref: '#/components/schemas/User'
-          description: L'utente che ha inviato il messaggio.
+          $ref: '#/components/schemas/User'
         content:
-          type: string
-          description: Contenuto del messaggio (testo semplice o URL di una foto/GIF).
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 4000
-          example: "Ciao!"
+          $ref: '#/components/schemas/MessageContent'
         contentType:
           type: string
           description: Tipo di contenuto del messaggio.
@@ -904,11 +744,7 @@ components:
           enum: ["text", "photo"]
           example: "text"
         timestamp:
-          type: string
-          format: date-time
-          description: Data e ora di invio del messaggio (formato ISO 8601 UTC).
-          pattern: '^.+$'
-          example: "2024-10-20T10:30:00Z"
+          $ref: '#/components/schemas/Timestamp'
         status:
           type: string
           description: Stato di consegna/lettura del messaggio (visibile solo per i messaggi inviati dall'utente autenticato). Non presente per i messaggi ricevuti.
@@ -923,41 +759,116 @@ components:
           items:
             $ref: '#/components/schemas/Reaction'
       required: ["id", "sender", "content", "contentType", "timestamp"]
+
+    Reaction:
+      description: Rappresenta una singola reazione (emoji) data da un utente a un messaggio.
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/InternalID'
+        emoji:
+          $ref: '#/components/schemas/Emoji'
+        user:
+          $ref: '#/components/schemas/User'
+      required: ["id", "emoji", "user"]
+
+
+    # Schemi di richiesta/risposta API (service/api/schemas.go)
+
+    ErrorResponse:
+      description: Schema generico per le risposte di errore.
+      type: object
+      properties:
+        message:
+          type: string
+          description: Messaggio descrittivo dell'errore.
+          minLength: 1
+          maxLength: 256
+          pattern: '^.+$'
+          example: "Si è verificato un errore."
+      required: ["message"]
+
+    LoginRequest:
+      description: Dati inviati per effettuare il login o la registrazione.
+      type: object
+      properties:
+        username: 
+          $ref: '#/components/schemas/Username'
+      required: ["username"] 
       
-    NewMessageRequest:
+    LoginResponse:
+      description: Risposta al login/registrazione, contenente l'identificativo univoco dell'utente.
+      type: object
+      properties:
+        identifier:
+          $ref: '#/components/schemas/UserID'
+      required: ["identifier"]
+      
+    SetMyUsernameRequest:
+      description: Dati inviati per aggiornare il nome utente.
+      type: object
+      properties:
+        username:
+          $ref: '#/components/schemas/Username'
+      required: ["username"]
+
+    SetPhotoRequest:
+      description: Dati inviati per aggiornare l'URL della foto profilo dell'utente o del gruppo.
+      type: object
+      properties:
+        photoUrl:
+          $ref: '#/components/schemas/PhotoURL'
+      required: ["photoUrl"]
+
+    UserIdRequest: 
+      description: Un oggetto che contiene un singolo ID utente (UUID).
+      type: object
+      properties:
+        userId:
+          $ref: '#/components/schemas/UserID'
+      required: ["userId"]
+
+    CreateGroupRequest:
+      description: Dati inviati per creare una nuova conversazione di gruppo.
+      type: object
+      properties:
+        groupName:
+          $ref: '#/components/schemas/GroupName'
+        memberIds:
+          type: array
+          description: Lista degli ID (univoci) degli utenti da aggiungere al gruppo (oltre all'utente che crea).
+          minItems: 1 
+          maxItems: 99 
+          items:
+            $ref: '#/components/schemas/UserID'
+      required: ["groupName", "memberIds"]
+      
+    SetGroupNameRequest:
+      description: Dati inviati per rinominare un gruppo.
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/GroupName'
+      required: ["name"]
+      
+    SendMessageRequest:
       description: Dati inviati per creare un nuovo messaggio. Deve contenere `text` o `photoUrl`.
       type: object
       properties:
         replyToMsgId:
-          type: string
-          description: ID (opzionale) del messaggio a cui questo messaggio risponde.
-          minLength: 1
-          maxLength: 50
-          pattern: '^.+$'
-          example: "msg-788"
+          $ref: '#/components/schemas/InternalID'
       oneOf:
         - type: object
           description: Messaggio di testo.
           properties:
             text:
-              type: string
-              description: Contenuto testuale del messaggio.
-              minLength: 1
-              maxLength: 4000
-              pattern: '^.+$'
-              example: "Ciao, come va?"
+              $ref: '#/components/schemas/MessageContent'
           required: ["text"]
         - type: object
           description: Messaggio con foto.
           properties:
             photoUrl:
-              type: string
-              format: uri
-              description: URL di un'immagine (foto o GIF) da inviare come messaggio.
-              minLength: 1
-              maxLength: 2048
-              pattern: '^.+$'
-              example: "https://example.com/photos/image.jpg"
+              $ref: '#/components/schemas/PhotoURL'
           required: ["photoUrl"]
         
     ForwardMessageRequest:
@@ -965,46 +876,13 @@ components:
       type: object
       properties:
         originalMessageId:
-          type: string
-          description: ID univoco del messaggio da inoltrare.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50
-          example: "msg-123"
+          $ref: '#/components/schemas/InternalID'
       required: ["originalMessageId"]
-      
-    Reaction:
-      description: Rappresenta una singola reazione (emoji) data da un utente a un messaggio.
-      type: object
-      properties:
-        id:
-          type: string
-          description: ID univoco della reazione.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 50 
-        emoji:
-          type: string
-          description: Il carattere emoji della reazione.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 4
-          example: "👍"
-        user:
-          allOf:
-            - $ref: '#/components/schemas/User'
-          description: L'utente che ha aggiunto la reazione.
-      required: ["id", "emoji", "user"]
 
-    NewReactionRequest:
+    CommentMessageRequest:
       description: Dati inviati per aggiungere una reazione a un messaggio.
       type: object
       properties:
         emoji:
-          type: string
-          description: Il carattere emoji da usare per la reazione.
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 4
-          example: "👍"
+          $ref: '#/components/schemas/Emoji'
       required: ["emoji"]

@@ -1,104 +1,80 @@
 package api
 
 import (
-	"encoding/json"                                      // Libreria per codificare/decodificare JSON
-	"errors"                                             // Libreria per gestire gli errori
-	"github.com/julienschmidt/httprouter"                // router HTTP di terze parti
-	"github.com/marcoseverini/wasatext/service/database" // Il nostro database
-	"net/http"                                           // Strumenti per gestire l'HTTP
-	"net/url"                                            // Libreria per gestire gli URL
+	"encoding/json" // Libreria per codificare/decodificare JSON
+	"errors"        // Libreria per gestire gli errori
+	"net/http"      // Libreria per gestire HTTP
+
+	"github.com/julienschmidt/httprouter"                // Router HTTP di terze parti
+	"github.com/marcoseverini/wasatext/service/database" // Database
 )
 
-// Handler per PUT /settings/username
-func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// r è la richiesta JSON in entrata
-	// w è la risposta JSON in uscita
-	// _ sono i parametri dell'URL
+// PUT /settings/username
+func (rt *_router) setMyUsername(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
-	// Il middleware 'authMiddleware' ha già verificato il token
-	// e ha messo l'ID utente nel context. Lo recuperiamo.
-	userID, ok := r.Context().Value(userIdentifierKey).(string)
-	if !ok {
-		// Questo non dovrebbe mai accadere se il middleware è applicato correttamente
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno: ID utente non trovato nel context")
-		return
-	}
-
-	// Leggiamo la richiesta JSON e la trasformiamo in una struct SetUsernameRequest
-	var req SetUsernameRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido: "+err.Error())
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
 		return
 	}
 
-	// Controlliamo che il nome rispetti le regole del nostro api.yaml (min: 3, max: 16)
-	newUsername := req.Username
-	if len(newUsername) < 3 || len(newUsername) > 16 {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "Nuovo nome utente non valido (deve essere tra 3 e 16 caratteri)")
-		return
-	}
-
-	// Aggiorniamo il nome utente nel database
-	updatedUser, err := rt.db.SetMyUsername(userID, newUsername)
+	var req SetMyUsernameRequest // components/schemas/SetMyUsernameRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		// Controlliamo se l'errore è dovuto a username già in uso
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	if err := req.Username.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	// Aggiorna il nome utente nel database
+	updatedUser, err := rt.db.SetMyUsername(userID, string(req.Username)) // components/schemas/User
+	if err != nil {
 		if errors.Is(err, database.ErrUsernameTaken) {
-			rt.sendErrorResponse(w, http.StatusConflict, "Username già in uso")
+			rt.sendErrorResponse(w, http.StatusConflict, "Username già in uso") // 409 Conflict
 		} else {
-			// Altro errore del database
-			rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno durante l'aggiornamento: "+err.Error())
+			rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
 		}
 		return
 	}
 
-	// Inviamo la risposta di successo
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // Codice 200 OK
-	// Rispondiamo con l'intera struct User aggiornata (che include ID e nuovo Username)
+	w.WriteHeader(http.StatusOK) // 200 OK
 	_ = json.NewEncoder(w).Encode(updatedUser)
 }
 
-// Handler per PUT /settings/photo
+// PUT /settings/photo
 func (rt *_router) setMyPhoto(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// r è la richiesta JSON in entrata
-	// w è la risposta JSON in uscita
-	// _ sono i parametri dell'URL
 
-	// Il middleware 'authMiddleware' ha già verificato il token
-	// e ha messo l'ID utente nel context. Lo recuperiamo.
-	userID, ok := r.Context().Value(userIdentifierKey).(string)
-	if !ok {
-		// Questo non dovrebbe mai accadere se il middleware è applicato correttamente
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno: ID utente non trovato nel context")
-		return
-	}
-
-	// Leggi il JSON body nella struct corretta
-	var req SetPhotoRequest // Usa la struct corretta
-	err := json.NewDecoder(r.Body).Decode(&req)
+	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido: "+err.Error())
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
 		return
 	}
 
-	photoURL := req.PhotoURL               // Estrai l'URL della foto dalla richiesta
-	_, err = url.ParseRequestURI(photoURL) // Verifica che sia un URL valido
-	if err != nil || photoURL == "" {      // Verifica che non sia vuoto
-		rt.sendErrorResponse(w, http.StatusBadRequest, "URL della foto non valido: "+err.Error())
-		return
-	}
-
-	// Chiama il database per aggiornare la foto
-	updatedUser, err := rt.db.SetMyPhoto(userID, photoURL)
+	var req SetPhotoRequest // components/schemas/SetPhotoRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		// Gestione errore generico del database
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore interno durante l'aggiornamento della foto: "+err.Error())
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
 		return
 	}
 
-	// Invia la risposta di successo
+	if err := req.PhotoURL.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	// Aggiorna la foto nel database
+	updatedUser, err := rt.db.SetMyPhoto(userID, string(req.PhotoURL)) // components/schemas/User
+	if err != nil {
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK) // 200 OK
 	_ = json.NewEncoder(w).Encode(updatedUser)
 }

@@ -1,11 +1,11 @@
 package api
 
 import (
-	"encoding/json" // Libreria per codificare/decodificare JSON
-	"net/http"      // Strumenti per gestire l'HTTP
+	"encoding/json" // Libreria per la codifica/decodifica JSON
+	"net/http"      // Libreria per gestire HTTP
 )
 
-// Funzione per inviare una risposta di errore JSON con il codice di stato e il messaggio specificati
+// Invia una risposta di errore JSON con il codice di stato e il messaggio specificati
 func (rt *_router) sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 
 	w.Header().Set("Content-Type", "application/json")

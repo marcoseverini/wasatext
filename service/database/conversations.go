@@ -1,0 +1,297 @@
+package database
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
+)
+
+func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID string) (string, error) {
+	// Trova una chat 1-1 esistente o ne crea una nuova.
+	// Restituisce l'ID della conversazione.
+
+	// Cerca una chat 1-1 (non di gruppo) esistente tra questi due utenti.
+	// Questa query trova le conversazioni (c.id) che non sono gruppi (c.isGroup = 0) e hanno esattamente due membri (COUNT(m.userId) = 2)
+	var existingConvID string
+	query := `
+		SELECT c.id
+		FROM conversations c
+		JOIN conversation_members m ON c.id = m.conversationId
+		WHERE c.isGroup = 0
+		GROUP BY c.id
+		HAVING COUNT(m.userId) = 2
+		   AND SUM(CASE WHEN m.userId = ? THEN 1 ELSE 0 END) = 1
+		   AND SUM(CASE WHEN m.userId = ? THEN 1 ELSE 0 END) = 1;`
+
+	err := db.c.QueryRow(query, requestingUserID, targetUserID).Scan(&existingConvID)
+
+	if err == nil {
+		// Se la conversazione è stata trovata, restituisce l'ID della conversazione esistente.
+		return existingConvID, nil
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		// Errore SQL inaspettato
+		return "", fmt.Errorf("error finding existing conversation: %w", err)
+	}
+
+	// Se la conversazione non è stata trovata ne crea una nuova.
+	tx, err := db.c.Begin()
+	if err != nil {
+		return "", fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	// Annulla se qualcosa va storto
+
+	// Crea la nuova conversazione
+	newConvID := "conv-" + uuid.New().String()
+	_, err = tx.Exec("INSERT INTO conversations (id, isGroup) VALUES (?, 0)", newConvID)
+	if err != nil {
+		return "", fmt.Errorf("could not create conversation: %w", err)
+	}
+
+	// Aggiunge il primo membro (l'utente che fa la richiesta)
+	_, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", newConvID, requestingUserID)
+	if err != nil {
+		return "", fmt.Errorf("could not add requesting user to conversation: %w", err)
+	}
+
+	// Aggiunge il secondo membro (l'utente target)
+	_, err = tx.Exec("INSERT INTO conversation_members (conversationId, userId) VALUES (?, ?)", newConvID, targetUserID)
+	if err != nil {
+		return "", fmt.Errorf("could not add target user to conversation: %w", err)
+	}
+
+	// Se tutto è andato bene, conferma la transazione
+	if err = tx.Commit(); err != nil {
+		return "", fmt.Errorf("could not commit transaction: %w", err)
+	}
+
+	return newConvID, nil
+}
+
+func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error) {
+	// Recupera tutti i dettagli di una conversazione.
+
+	var conversation Conversation // components/schemas/Conversation
+
+	// Verifica che l'utente sia membro di questa conversazione
+	var isMember bool
+	err := db.c.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)", conversationID, requestingUserID).Scan(&isMember)
+	if err != nil || !isMember {
+		return conversation, fmt.Errorf("user not member or conversation not found")
+	}
+
+	// Prende i dettagli della conversazione
+	var nullableName sql.NullString
+	var nullablePhoto sql.NullString
+	err = db.c.QueryRow("SELECT id, name, photoUrl, isGroup FROM conversations WHERE id = ?", conversationID).
+		Scan(&conversation.ID, &nullableName, &nullablePhoto, &conversation.IsGroup)
+	if err != nil {
+		return conversation, fmt.Errorf("could not get conversation details: %w", err)
+	}
+
+	conversation.Name = nullableName.String
+	conversation.PhotoURL = nullablePhoto.String
+
+	// Se non è un gruppo, il nome e la foto sono quelli dell'altro utente
+	if !conversation.IsGroup {
+		var otherUser User
+		var otherPhoto sql.NullString
+		err = db.c.QueryRow(`
+			SELECT u.id, u.username, u.photoUrl FROM users u
+			JOIN conversation_members cm ON u.id = cm.userId
+			WHERE cm.conversationId = ? AND cm.userId != ?`, conversationID, requestingUserID).
+			Scan(&otherUser.ID, &otherUser.Username, &otherPhoto)
+
+		if err == nil {
+			conversation.Name = otherUser.Username
+			conversation.PhotoURL = otherPhoto.String
+		}
+	}
+
+	// Prende i membri
+	rows, err := db.c.Query(`
+		SELECT u.id, u.username, u.photoUrl FROM users u
+		JOIN conversation_members cm ON u.id = cm.userId
+		WHERE cm.conversationId = ?`, conversationID)
+	if err != nil {
+		return conversation, fmt.Errorf("could not get conversation members: %w", err)
+	}
+	defer rows.Close()
+
+	var members []User
+	for rows.Next() {
+		var user User
+		var photo sql.NullString
+		if err := rows.Scan(&user.ID, &user.Username, &photo); err != nil {
+			return conversation, fmt.Errorf("could not scan member: %w", err)
+		}
+		user.PhotoURL = photo.String
+		members = append(members, user)
+	}
+	if err = rows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating members: %w", err)
+	}
+	conversation.Members = members
+
+	// Prende i messaggi
+	msgRows, err := db.c.Query(`
+		SELECT m.id, m.content, m.contentType, m.timestamp,
+		       u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
+		FROM messages m
+		JOIN users u ON m.senderId = u.id
+		WHERE m.conversationId = ?
+		ORDER BY m.timestamp DESC`, conversationID)
+	if err != nil {
+		return conversation, fmt.Errorf("could not get messages: %w", err)
+	}
+	defer msgRows.Close()
+
+	var messages []Message
+
+	messageMap := make(map[string]*Message)
+
+	for msgRows.Next() {
+		var msg Message
+		var senderPhoto sql.NullString
+		if err := msgRows.Scan(&msg.ID, &msg.Content, &msg.ContentType, &msg.Timestamp,
+			&msg.Sender.ID, &msg.Sender.Username, &senderPhoto); err != nil {
+			return conversation, fmt.Errorf("could not scan message: %w", err)
+		}
+		msg.Sender.PhotoURL = senderPhoto.String
+		msg.Reactions = []Reaction{} // Inizializza come array vuoto
+		messages = append(messages, msg)
+		// Aggiunge un puntatore al messaggio nella mappa
+		messageMap[msg.ID] = &messages[len(messages)-1]
+	}
+	if err = msgRows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating messages: %w", err)
+	}
+	msgRows.Close()
+
+	// Prende tutte le reazioni per questa conversazione in un'unica query e le unisce ai messaggi in Go.
+	reactRows, err := db.c.Query(`
+		SELECT r.id, r.messageId, r.emoji,
+			u.id as reactorId, u.username as reactorUsername, u.photoUrl as reactorPhoto
+		FROM reactions r
+		JOIN users u ON r.userId = u.id
+		WHERE r.messageId IN (SELECT id FROM messages WHERE conversationId = ?)
+	`, conversationID)
+	if err != nil {
+		return conversation, fmt.Errorf("could not get reactions: %w", err)
+	}
+	defer reactRows.Close()
+
+	for reactRows.Next() {
+		var reaction Reaction
+		var msgId string
+		var reactorPhoto sql.NullString
+
+		if err := reactRows.Scan(&reaction.ID, &msgId, &reaction.Emoji,
+			&reaction.User.ID, &reaction.User.Username, &reactorPhoto); err != nil {
+			return conversation, fmt.Errorf("could not scan reaction: %w", err)
+		}
+		reaction.User.PhotoURL = reactorPhoto.String
+
+		// Aggiunge la reazione al messaggio corretto usando la mappa
+		if msgPtr, ok := messageMap[msgId]; ok {
+			msgPtr.Reactions = append(msgPtr.Reactions, reaction)
+		}
+	}
+	if err = reactRows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating reactions: %w", err)
+	}
+
+	conversation.Messages = messages
+
+	if conversation.Members == nil {
+		conversation.Members = []User{}
+	}
+	if conversation.Messages == nil {
+		conversation.Messages = []Message{}
+	}
+
+	return conversation, nil
+}
+
+// Recupera la lista delle chat per un utente.
+func (db *appdbimpl) GetConversationSummaries(userID string) ([]ConversationSummary, error) {
+
+	var summaries []ConversationSummary // Lista di components/schemas/ConversationSummary
+
+	// Questa query è la più complessa.
+	// Trova tutte le conversazioni (c) a cui l'utente (userID) partecipa.
+	// Per ogni conversazione, trova l'ultimo messaggio (lm).
+	// Calcola il nome e la foto:
+	// Se è un gruppo (isGroup = 1), usa c.name e c.photoUrl.
+	// Altrimenti (isGroup = 0), trova l'altro utente (ou) e usa ou.username e ou.photoUrl.
+
+	query := `
+		WITH LatestMessages AS (
+			SELECT
+				conversationId,
+				content,
+				timestamp,
+				ROW_NUMBER() OVER(PARTITION BY conversationId ORDER BY timestamp DESC) as rn
+			FROM messages
+			WHERE conversationId IN (SELECT conversationId FROM conversation_members WHERE userId = ?)
+		),
+		OtherUsers AS (
+			SELECT 
+				cm.conversationId, 
+				u.username, 
+				u.photoUrl 
+			FROM conversation_members cm
+			JOIN users u ON cm.userId = u.id
+			WHERE cm.conversationId IN (SELECT conversationId FROM conversation_members WHERE userId = ?)
+			  AND cm.userId != ?
+		)
+		SELECT 
+			c.id,
+			c.isGroup,
+			COALESCE(lm.content, '') AS latestMessageSnippet,
+			COALESCE(lm.timestamp, '') AS latestMessageTimestamp,
+			CASE WHEN c.isGroup = 1 THEN c.name ELSE ou.username END AS conversationName,
+			CASE WHEN c.isGroup = 1 THEN c.photoUrl ELSE ou.photoUrl END AS conversationPhotoUrl
+		FROM conversations c
+		JOIN conversation_members cm_user ON c.id = cm_user.conversationId AND cm_user.userId = ?
+		LEFT JOIN LatestMessages lm ON c.id = lm.conversationId AND lm.rn = 1
+		LEFT JOIN OtherUsers ou ON c.id = ou.conversationId AND c.isGroup = 0
+		ORDER BY latestMessageTimestamp DESC;
+	`
+
+	rows, err := db.c.Query(query, userID, userID, userID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error querying conversation summaries: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var summary ConversationSummary // components/schemas/ConversationSummary
+		var isGroup bool
+		var name, photo, snippet, timestamp sql.NullString
+
+		err = rows.Scan(&summary.ID, &isGroup, &snippet, &timestamp, &name, &photo)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning summary row: %w", err)
+		}
+
+		summary.Name = name.String
+		summary.PhotoURL = photo.String
+		summary.LatestMessageSnippet = snippet.String
+		summary.LatestMessageTimestamp = timestamp.String
+
+		summaries = append(summaries, summary)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating summary rows: %w", err)
+	}
+
+	return summaries, nil
+}

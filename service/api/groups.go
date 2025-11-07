@@ -1,239 +1,247 @@
 package api
 
 import (
-	"database/sql"
-	"encoding/json"
-	"errors"
-	"net/http"
-	"net/url"
+	"database/sql"  // Libreria per interagire con database SQL
+	"encoding/json" // Libreria per la codifica/decodifica JSON
+	"errors"        // Libreria per gestire gli errori
+	"net/http"      // Libreria per gestire HTTP
 
-	"github.com/julienschmidt/httprouter"
-	"github.com/marcoseverini/wasatext/service/database"
+	"github.com/julienschmidt/httprouter"                // Router HTTP di terze parti
+	"github.com/marcoseverini/wasatext/service/database" // Database
 )
 
-// --- STRUCT PER JSON BODY ---
-
-type NewGroupRequest struct {
-	GroupName string   `json:"groupName"`
-	MemberIds []string `json:"memberIds"`
-}
-
-type SetGroupNameRequest struct {
-	Name string `json:"name"`
-}
-
-type AddMemberRequest struct {
-	UserID string `json:"userId"`
-}
-
-// --- HANDLERS ---
-
-// createGroup (POST /groups)
+// POST /groups
 func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// 1. Prendi l'ID utente
-	requestingUserID, err := rt.getUserIdFromAuth(r)
+
+	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusUnauthorized, err.Error())
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
 		return
 	}
 
-	// 2. Decodifica body
-	var req NewGroupRequest
+	var req CreateGroupRequest // components/schemas/CreateGroupRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido.")
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
 		return
 	}
 
-	// 3. Validazione
-	if req.GroupName == "" || len(req.MemberIds) == 0 {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "Nome gruppo e lista membri sono richiesti.")
+	if err = req.GroupName.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
 		return
 	}
-	// (Qui potresti aggiungere un controllo per ID duplicati o per l'ID del creatore)
+	if len(req.MemberIds) == 0 {
+		rt.sendErrorResponse(w, http.StatusBadRequest, "La lista dei membri non può essere vuota.") // 400 Bad Request
+		return
+	}
 
-	// 4. Chiama il DB
-	convID, err := rt.db.CreateGroup(requestingUserID, req.GroupName, req.MemberIds)
+	var memberIdsStrings []string
+	for _, memberId := range req.MemberIds {
+		if err = memberId.Validate(); err != nil {
+			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+			return
+		}
+		memberIdsStrings = append(memberIdsStrings, string(memberId))
+	}
+
+	convID, err := rt.db.CreateGroup(userID, string(req.GroupName), memberIdsStrings) // components/schemas/Conversation
 	if err != nil {
-		// Potrebbe fallire se un ID membro non esiste (FOREIGN KEY)
-		rt.sendErrorResponse(w, http.StatusBadRequest, "Dati non validi: "+err.Error())
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
 		return
 	}
 
-	// 5. Restituisci la conversazione completa (come da YAML)
-	conversationDetails, err := rt.db.GetConversationDetails(convID, requestingUserID)
+	conversationDetails, err := rt.db.GetConversationDetails(convID, userID)
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore nel recuperare i dettagli del gruppo.")
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore nel recuperare i dettagli del gruppo.") // 500 Internal Server Error
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201
+	w.WriteHeader(http.StatusCreated) // 201 Created
 	_ = json.NewEncoder(w).Encode(conversationDetails)
 }
 
-// setGroupName (PUT /conversations/{convId}/name)
+// PUT /conversations/{convId}/name
 func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Prendi ID utente e ID conversazione
-	requestingUserID, err := rt.getUserIdFromAuth(r)
+
+	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusUnauthorized, err.Error())
-		return
-	}
-	convId := ps.ByName("convId")
-
-	// 2. Decodifica body
-	var req SetGroupNameRequest
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido o nome mancante.")
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
 		return
 	}
 
-	// 3. Chiama il DB
-	err = rt.db.SetGroupName(requestingUserID, convId, req.Name)
-	if err != nil {
-		if errors.Is(err, database.ErrForbidden) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo.")
-			return
-		}
-		if errors.Is(err, database.ErrBadRequest) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non è un gruppo.")
-			return
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Conversazione non trovata.")
-			return
-		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiornamento.")
+	var convId InternalID = InternalID(ps.ByName("convId")) // components/parameters/ConvID
+	if err = convId.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 4. Restituisci la conversazione aggiornata
-	conversationDetails, err := rt.db.GetConversationDetails(convId, requestingUserID)
-	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore nel recuperare i dettagli del gruppo.")
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200
-	_ = json.NewEncoder(w).Encode(conversationDetails)
-}
-
-// setGroupPhoto (PUT /conversations/{convId}/photo)
-func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Prendi ID utente e ID conversazione
-	requestingUserID, err := rt.getUserIdFromAuth(r)
-	if err != nil {
-		rt.sendErrorResponse(w, http.StatusUnauthorized, err.Error())
-		return
-	}
-	convId := ps.ByName("convId")
-
-	// 2. Decodifica body (Usa la struct SetPhotoRequest di 'settings.go')
-	var req SetPhotoRequest
+	var req SetGroupNameRequest // components/schemas/SetGroupNameRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido.")
-		return
-	}
-	if _, err = url.ParseRequestURI(req.PhotoURL); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "URL non valido.")
+		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido.") // 400 Bad Request
 		return
 	}
 
-	// 3. Chiama il DB
-	err = rt.db.SetGroupPhoto(requestingUserID, convId, req.PhotoURL)
+	if err = req.Name.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	err = rt.db.SetGroupName(userID, string(convId), string(req.Name))
 	if err != nil {
-		// (Gestione errori identica a setGroupName)
 		if errors.Is(err, database.ErrForbidden) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo.")
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo.") // 403 Forbidden
 			return
 		}
 		if errors.Is(err, database.ErrBadRequest) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non è un gruppo.")
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non è un gruppo.") // 403 Forbidden
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Conversazione non trovata.")
+			rt.sendErrorResponse(w, http.StatusNotFound, "Conversazione non trovata.") // 404 Not Found
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiornamento.")
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiornamento.") // 500 Internal Server Error
 		return
 	}
 
-	// 4. Restituisci la conversazione aggiornata
-	conversationDetails, err := rt.db.GetConversationDetails(convId, requestingUserID)
+	conversationDetails, err := rt.db.GetConversationDetails(string(convId), userID) // components/schemas/Conversation
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore nel recuperare i dettagli del gruppo.")
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore nel recuperare i dettagli del gruppo.") // 500 Internal Server Error
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200
+	w.WriteHeader(http.StatusOK) // 200 OK
 	_ = json.NewEncoder(w).Encode(conversationDetails)
 }
 
-// addToGroup (POST /conversations/{convId}/members)
-func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Prendi ID utente e ID conversazione
-	requestingUserID, err := rt.getUserIdFromAuth(r)
+// PUT /conversations/{convId}/photo
+func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusUnauthorized, err.Error())
-		return
-	}
-	convId := ps.ByName("convId")
-
-	// 2. Decodifica body
-	var req AddMemberRequest
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido o 'userId' mancante.")
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
 		return
 	}
 
-	// 3. Chiama il DB
-	err = rt.db.AddGroupMember(requestingUserID, convId, req.UserID)
+	var convId InternalID = InternalID(ps.ByName("convId")) // components/parameters/ConvID
+	if err = convId.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	var req SetPhotoRequest // components/schemas/SetPhotoRequest
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido.") // 400 Bad Request
+		return
+	}
+
+	if err = req.PhotoURL.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	err = rt.db.SetGroupPhoto(userID, string(convId), string(req.PhotoURL))
+	if err != nil {
+		if errors.Is(err, database.ErrForbidden) {
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo.") // 403 Forbidden
+			return
+		}
+		if errors.Is(err, database.ErrBadRequest) {
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non è un gruppo.") // 403 Forbidden
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			rt.sendErrorResponse(w, http.StatusNotFound, "Conversazione non trovata.") // 404 Not Found
+			return
+		}
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiornamento.") // 500 Internal Server Error
+		return
+	}
+
+	conversationDetails, err := rt.db.GetConversationDetails(string(convId), userID)
+	if err != nil {
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore nel recuperare i dettagli del gruppo.") // components/schemas/Conversation
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // 200 OK
+	_ = json.NewEncoder(w).Encode(conversationDetails)
+}
+
+// POST /conversations/{convId}/members
+func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	if err != nil {
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		return
+	}
+
+	var convId InternalID = InternalID(ps.ByName("convId")) // components/parameters/ConvID
+	if err = convId.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	var req UserIdRequest // components/schemas/UserIdRequest
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, "JSON non valido o 'userId' mancante.") // 400 Bad Request
+		return
+	}
+
+	if err = req.UserID.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	err = rt.db.AddGroupMember(userID, string(convId), string(req.UserID))
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrForbidden):
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo.")
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo.") // 403 Forbidden
 		case errors.Is(err, database.ErrBadRequest):
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non è un gruppo.")
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non è un gruppo.") // 403 Forbidden
 		case errors.Is(err, sql.ErrNoRows):
-			rt.sendErrorResponse(w, http.StatusNotFound, "Gruppo o utente da aggiungere non trovato.")
+			rt.sendErrorResponse(w, http.StatusNotFound, "Gruppo o utente da aggiungere non trovato.") // 404 Not Found
 		case errors.Is(err, database.ErrAlreadyMember):
-			rt.sendErrorResponse(w, http.StatusConflict, "L'utente è già membro del gruppo.")
+			rt.sendErrorResponse(w, http.StatusConflict, "L'utente è già membro del gruppo.") // 409 Conflict
 		default:
-			rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiunta del membro.")
+			rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiunta del membro.") // 500 Internal Server Error
 		}
-		return // Ritorna dopo aver gestito l'errore
-	}
-
-	// 4. Successo
-	w.WriteHeader(http.StatusNoContent) // 204
-}
-
-// leaveGroup (DELETE /conversations/{convId}/members/me)
-func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Prendi ID utente e ID conversazione
-	requestingUserID, err := rt.getUserIdFromAuth(r)
-	if err != nil {
-		rt.sendErrorResponse(w, http.StatusUnauthorized, err.Error())
 		return
 	}
-	convId := ps.ByName("convId")
 
-	// 2. Chiama il DB
-	err = rt.db.LeaveGroup(requestingUserID, convId)
+	w.WriteHeader(http.StatusNoContent) // 204 No Content
+}
+
+// DELETE /conversations/{convId}/members/me
+func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	if err != nil {
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		return
+	}
+
+	var convId InternalID = InternalID(ps.ByName("convId")) // components/parameters/ConvID
+	if err = convId.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		return
+	}
+
+	err = rt.db.LeaveGroup(userID, string(convId))
 	if err != nil {
 		if errors.Is(err, database.ErrForbidden) || errors.Is(err, database.ErrBadRequest) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo (o non è un gruppo).")
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questo gruppo (o non è un gruppo).") // 403 Forbidden
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Gruppo non trovato.")
+			rt.sendErrorResponse(w, http.StatusNotFound, "Gruppo non trovato.") // 404 Not Found
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'abbandono del gruppo.")
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'abbandono del gruppo.") // 500 Internal Server Error
 		return
 	}
 
-	// 3. Successo
-	w.WriteHeader(http.StatusNoContent) // 204
+	w.WriteHeader(http.StatusNoContent) // 204 No Content
 }

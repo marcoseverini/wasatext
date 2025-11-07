@@ -1,13 +1,13 @@
 package database
 
-// Struttura che rappresenta un utente nel database
+// components/schemas/User
 type User struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	PhotoURL string `json:"photoUrl,omitempty"`
 }
 
-// ConversationSummary rappresenta l'anteprima di una conversazione.
+// components/schemas/ConversationSummary
 type ConversationSummary struct {
 	ID                     string `json:"id"`
 	Name                   string `json:"name"`
@@ -16,7 +16,7 @@ type ConversationSummary struct {
 	LatestMessageTimestamp string `json:"latestMessageTimestamp,omitempty"`
 }
 
-// Conversation rappresenta una conversazione completa.
+// components/schemas/Conversation
 type Conversation struct {
 	ID       string    `json:"id"`
 	Name     string    `json:"name"`
@@ -26,7 +26,7 @@ type Conversation struct {
 	Messages []Message `json:"messages"`
 }
 
-// Message rappresenta un singolo messaggio.
+// components/schemas/Message
 type Message struct {
 	ID          string     `json:"id"`
 	Sender      User       `json:"sender"`
@@ -37,7 +37,7 @@ type Message struct {
 	Reactions   []Reaction `json:"reactions"`
 }
 
-// Reaction rappresenta una reazione.
+// components/schemas/Reaction
 type Reaction struct {
 	ID    string `json:"id"`
 	Emoji string `json:"emoji"`

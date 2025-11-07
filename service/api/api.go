@@ -1,11 +1,12 @@
 package api
 
 import (
-	"errors"                                             // Libreria per gestire gli errori
-	"github.com/julienschmidt/httprouter"                // router HTTP di terze parti
-	"github.com/marcoseverini/wasatext/service/database" // Il nostro database
+	"errors"   // Libreria per gestire gli errori
+	"net/http" // Libreria per gestire HTTP
+
+	"github.com/julienschmidt/httprouter"                // Router HTTP di terze parti
+	"github.com/marcoseverini/wasatext/service/database" // Database
 	"github.com/sirupsen/logrus"                         // Libreria di logging strutturato
-	"net/http"                                           // Strumenti per gestire l'HTTP
 )
 
 // Dipendenze per il router API
@@ -39,12 +40,12 @@ func New(cfg Config) (Router, error) {
 		return nil, errors.New("database is required")
 	}
 
-	// Creiamo il router HTTP di terze parti
+	// Crea il router HTTP di terze parti
 	router := httprouter.New()
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
 
-	// Creiamo l'istanza di _router (rt) salvando le dipendenze (db e logger) al suo interno.
+	// Crea l'istanza di _router (rt) salvando le dipendenze (db e logger) al suo interno.
 	rt := &_router{
 		router:     router,
 		baseLogger: cfg.Logger,
@@ -52,8 +53,8 @@ func New(cfg Config) (Router, error) {
 	}
 
 	// Rotte HTTP
-	router.POST("/session", rt.doLogin)
-	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUserName))
+	router.POST("/session", rt.login)
+	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUsername))
 	router.PUT("/settings/photo", rt.authMiddleware(rt.setMyPhoto))
 	router.GET("/users", rt.authMiddleware(rt.searchUsers))
 	router.POST("/conversations", rt.authMiddleware(rt.startConversation))
@@ -70,11 +71,11 @@ func New(cfg Config) (Router, error) {
 	router.POST("/conversations/:convId/members", rt.authMiddleware(rt.addToGroup))
 	router.DELETE("/conversations/:convId/members/me", rt.authMiddleware(rt.leaveGroup))
 
-	// Restituiamo il router configurato
+	// Restituisce il router configurato
 	return rt, nil
 }
 
-// Handler ritorna il gestore HTTP pronto per il server
+// Ritorna il gestore HTTP pronto per il server
 func (rt *_router) Handler() http.Handler {
 	return rt.router
 }
