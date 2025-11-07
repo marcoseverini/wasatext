@@ -17,29 +17,28 @@ echo_ok()    { echo -e "${COLOR_GREEN}✅ $1${COLOR_NONE}"; }
 echo_fail()  { echo -e "${COLOR_RED}❌ $1${COLOR_NONE}"; }
 echo_info()  { echo -e "${COLOR_YELLOW}ℹ️ $1${COLOR_NONE}"; }
 
-# Funzione per controllare lo status code (CORRETTA)
+# Funzione per controllare lo status code
 assert_status() {
     local response=$1
     local expected_status=$2
     local test_name=$3
     
-    # CORREZIONE: Cerca la riga che inizia con "< HTTP/"
     local status_line=$(echo "$response" | grep "^< HTTP/") 
-    local status=$(echo "$status_line" | awk '{print $3}') # Prende il terzo elemento (es. 201)
+    local status=$(echo "$status_line" | awk '{print $3}')
     
     if [ "$status" == "$expected_status" ]; then
         echo_ok "$test_name (Status $status)"
     else
         echo_fail "$test_name (Atteso $expected_status, ricevuto $status)"
-        echo "$response" # Stampa l'errore
-        exit 1 # Interrompe il test
+        echo "$response" 
+        exit 1 
     fi
 }
 
-# Funzione per estrarre il JSON dal corpo della risposta curl -v
+# --- CORREZIONE QUI ---
+# Funzione per estrarre il JSON (trova l'ultima riga che inizia con { o [)
 extract_body() {
-    # Estrae solo la parte che inizia con { o [
-    echo "$1" | sed -n '/^[{\[]/,$p'
+    echo "$1" | grep "^[{\[]" | tail -n 1
 }
 
 # Assicurati che il server sia raggiungibile
