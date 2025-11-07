@@ -35,8 +35,7 @@ assert_status() {
     fi
 }
 
-# --- CORREZIONE QUI ---
-# Funzione per estrarre il JSON (trova l'ultima riga che inizia con { o [)
+# Funzione per estrarre il JSON
 extract_body() {
     echo "$1" | grep "^[{\[]" | tail -n 1
 }
@@ -76,6 +75,8 @@ ID_LUCA=$(echo $JSON_LUCA | $JQ_CMD -r .identifier)
 echo_info "Test 1.3: Login 'Carlo' (201)"
 RES_CARLO_RAW=$(curl -s -v -X POST "$BASE_URL/session" -H "Content-Type: application/json" -d '{"username": "Carlo"}' 2>&1)
 assert_status "$RES_CARLO_RAW" "201" "Login Carlo"
+# --- CORREZIONE QUI ---
+JSON_CARLO=$(extract_body "$RES_CARLO_RAW") 
 TOKEN_CARLO=$(echo $JSON_CARLO | $JQ_CMD -r .identifier)
 
 # 1.4 Test Login (Nome breve) - 400
