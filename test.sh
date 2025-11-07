@@ -75,9 +75,10 @@ ID_LUCA=$(echo $JSON_LUCA | $JQ_CMD -r .identifier)
 echo_info "Test 1.3: Login 'Carlo' (201)"
 RES_CARLO_RAW=$(curl -s -v -X POST "$BASE_URL/session" -H "Content-Type: application/json" -d '{"username": "Carlo"}' 2>&1)
 assert_status "$RES_CARLO_RAW" "201" "Login Carlo"
-# --- CORREZIONE QUI ---
 JSON_CARLO=$(extract_body "$RES_CARLO_RAW") 
 TOKEN_CARLO=$(echo $JSON_CARLO | $JQ_CMD -r .identifier)
+# --- CORREZIONE QUI ---
+ID_CARLO=$(echo $JSON_CARLO | $JQ_CMD -r .identifier) # Questa riga mancava
 
 # 1.4 Test Login (Nome breve) - 400
 echo_info "Test 1.4: Login 'io' (400 Bad Request)"
