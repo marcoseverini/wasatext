@@ -242,10 +242,14 @@ func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps h
 	err = rt.db.RemoveReaction(userID, string(reactionId), string(msgId))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Reazione non trovata o non sei il proprietario.") // 404 Not Found
+			rt.sendErrorResponse(w, http.StatusNotFound, "Reazione non trovata.") // 404 Not Found
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante la rimozione della reazione.") // 500 Internal Server Error
+		if errors.Is(err, database.ErrForbidden) {
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei il proprietario di questa reazione.") // 403 Forbidden
+			return
+		}
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
 		return
 	}
 

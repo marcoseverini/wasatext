@@ -277,26 +277,30 @@ func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoj
 // Elimina una reazione.
 func (db *appdbimpl) RemoveReaction(requestingUserID string, reactionID string, messageID string) error {
 
-	// Esegue la cancellazione solo se l'ID reazione, l'ID messaggio e l'ID utente (proprietario) corrispondono.
-	// Questo previene che un utente cancelli la reazione di un altro.
-	res, err := db.c.Exec(`
-        DELETE FROM reactions 
-        WHERE id = ? AND messageId = ? AND userId = ?`,
-		reactionID, messageID, requestingUserID)
+	// Controlla prima l'esistenza e la proprietà
+	var ownerId string
+	err := db.c.QueryRow("SELECT userId FROM reactions WHERE id = ? AND messageId = ?",
+		reactionID, messageID).Scan(&ownerId)
 
 	if err != nil {
-		return fmt.Errorf("error deleting reaction: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			// La reazione (o il messaggio) non esiste
+			return sql.ErrNoRows
+		}
+		return fmt.Errorf("error checking reaction owner: %w", err)
 	}
 
-	// Controlla se qualche riga è stata effettivamente cancellata
-	rowsAffected, err := res.RowsAffected()
+	// Controllo Autorizzazione
+	if ownerId != requestingUserID {
+		// La reazione esiste, ma non è tua
+		return ErrForbidden
+	}
+
+	// L'utente è autorizzato. Ora elimina il messaggio.
+	_, err = db.c.Exec("DELETE FROM reactions WHERE id = ?", reactionID)
 	if err != nil {
-		return fmt.Errorf("error checking affected rows: %w", err)
+		return fmt.Errorf("error deleting reaction: %w", err) // 500
 	}
 
-	if rowsAffected == 0 {
-		return sql.ErrNoRows
-	}
-
-	return nil // Successo
+	return nil
 }
