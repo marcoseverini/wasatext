@@ -17,16 +17,15 @@ echo_ok()    { echo -e "${COLOR_GREEN}✅ $1${COLOR_NONE}"; }
 echo_fail()  { echo -e "${COLOR_RED}❌ $1${COLOR_NONE}"; }
 echo_info()  { echo -e "${COLOR_YELLOW}ℹ️ $1${COLOR_NONE}"; }
 
-# Funzione per controllare lo status code
+# Funzione per controllare lo status code (CORRETTA)
 assert_status() {
     local response=$1
     local expected_status=$2
     local test_name=$3
     
-    # Estrae la prima riga che inizia con HTTP/
-    local status_line=$(echo "$response" | grep "^HTTP/")
-    # Estrae il codice (es. 200, 201, 404)
-    local status=$(echo "$status_line" | awk '{print $2}')
+    # CORREZIONE: Cerca la riga che inizia con "< HTTP/"
+    local status_line=$(echo "$response" | grep "^< HTTP/") 
+    local status=$(echo "$status_line" | awk '{print $3}') # Prende il terzo elemento (es. 201)
     
     if [ "$status" == "$expected_status" ]; then
         echo_ok "$test_name (Status $status)"
@@ -52,6 +51,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo_info "--- Inizio Test di Integrazione ---"
+echo_info "(Assicurati di aver cancellato il file .db per un test pulito)"
 
 # ===============================================
 echo_info "Blocco 1: Login e Setup Utenti"
