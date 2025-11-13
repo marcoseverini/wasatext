@@ -34,13 +34,13 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	var memberIdsStrings []string = make([]string, 0, len(req.MemberIds))
-	for _, memberId := range req.MemberIds {
+	memberIdsStrings := make([]string, len(req.MemberIds))
+	for i, memberId := range req.MemberIds {
 		if err = memberId.Validate(); err != nil {
-			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+			rt.sendErrorResponse(w, http.StatusBadRequest, "ID membro non valido: "+err.Error())
 			return
 		}
-		memberIdsStrings = append(memberIdsStrings, string(memberId))
+		memberIdsStrings[i] = string(memberId)
 	}
 
 	convID, err := rt.db.CreateGroup(userID, string(req.GroupName), memberIdsStrings) // components/schemas/Conversation
