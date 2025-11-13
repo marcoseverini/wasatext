@@ -40,7 +40,11 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 		}
 	}
 
+	response := database.UserList{
+		Users: filteredUsers,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // 200 OK
-	_ = json.NewEncoder(w).Encode(filteredUsers)
+	_ = json.NewEncoder(w).Encode(response)
 }

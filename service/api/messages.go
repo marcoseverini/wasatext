@@ -92,7 +92,7 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 	_ = json.NewEncoder(w).Encode(newMessage)
 }
 
-// POST /conversations/{convId}/forwarded-messages
+// POST /conversations/{convId}/forwarded_messages
 func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	userID, err := rt.getUserIdFromAuth(r) // Autenticazione

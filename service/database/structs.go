@@ -43,3 +43,13 @@ type Reaction struct {
 	Emoji string `json:"emoji"`
 	User  User   `json:"user"`
 }
+
+// components/schemas/UserList
+type UserList struct {
+	Users []User `json:"users"`
+}
+
+// components/schemas/ConversationList
+type ConversationList struct {
+	Conversations []ConversationSummary `json:"conversations"`
+}

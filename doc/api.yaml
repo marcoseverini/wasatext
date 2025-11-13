@@ -125,12 +125,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                description: Lista degli utenti trovati.
-                items:
-                  $ref: '#/components/schemas/User'
-                minItems: 0
-                maxItems: 100
+                $ref: '#/components/schemas/UserList'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -180,12 +175,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                description: Lista delle anteprime delle conversazioni.
-                items:
-                  $ref: '#/components/schemas/ConversationSummary'
-                minItems: 0
-                maxItems: 100
+                $ref: '#/components/schemas/ConversationList'
         '500':
           $ref: '#/components/responses/InternalServerError'
         '401':
@@ -277,7 +267,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /conversations/{convId}/forwarded-messages:
+  /conversations/{convId}/forwarded_messages:
     post:
       tags: ["messages"]
       summary: Forward a message
@@ -625,7 +615,7 @@ components:
     PhotoURL:
       description: URL di un'immagine (foto profilo o messaggio).
       type: string
-      format: uri
+      format: url
       pattern: '^.+$'
       minLength: 1
       maxLength: 2048
@@ -697,7 +687,7 @@ components:
           $ref: '#/components/schemas/Timestamp'
       required: ["id", "name"]
 
-      Conversation:
+    Conversation:
       description: Rappresenta i dettagli completi di una singola conversazione, inclusi membri e messaggi.
       type: object
       properties:
@@ -886,3 +876,33 @@ components:
         emoji:
           $ref: '#/components/schemas/Emoji'
       required: ["emoji"]
+
+    UserList:
+      description: Una lista di utenti.
+      type: object
+      properties:
+        users:
+          type: array
+          description: Lista degli utenti trovati.
+          items:
+            $ref: '#/components/schemas/User'
+          minItems: 0
+          maxItems: 100
+      required: ["users"]
+
+    ConversationList:
+      description: Una lista di anteprime delle conversazioni.
+      type: object
+      properties:
+        conversations:
+          type: array
+          description: Lista delle anteprime delle conversazioni.
+          items:
+            $ref: '#/components/schemas/ConversationSummary'
+          minItems: 0
+          maxItems: 100
+      required: ["conversations"]
+
+    
+
+    

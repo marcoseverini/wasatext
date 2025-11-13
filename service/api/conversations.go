@@ -83,9 +83,13 @@ func (rt *_router) getMyConversations(w http.ResponseWriter, r *http.Request, _ 
 		return
 	}
 
+	response := database.ConversationList{
+		Conversations: summaries,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // 200 OK
-	_ = json.NewEncoder(w).Encode(summaries)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // GET /conversations/{convId}
@@ -105,9 +109,6 @@ func (rt *_router) getConversation(w http.ResponseWriter, r *http.Request, ps ht
 
 	conversationDetails, err := rt.db.GetConversationDetails(string(convId), userID) // components/schemas/Conversation
 	if err != nil {
-
-		// NOTA: GetConversationDetails nel DB dovrebbe restituire ErrForbidden se non sei membro
-
 		if errors.Is(err, database.ErrForbidden) {
 			rt.sendErrorResponse(w, http.StatusForbidden, "Accesso negato.") // 403 Forbidden
 			return
