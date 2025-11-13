@@ -34,7 +34,7 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	var memberIdsStrings []string
+	var memberIdsStrings []string = make([]string, 0, len(req.MemberIds))
 	for _, memberId := range req.MemberIds {
 		if err = memberId.Validate(); err != nil {
 			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
