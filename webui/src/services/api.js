@@ -148,4 +148,30 @@ export async function apiDeleteMessage(messageId) {
   });
 }
 
-// (Aggiungeremo le altre qui quando serviranno)
+/**
+ * Aggiunge una reazione (emoji) a un messaggio
+ * @param {string} messageId - L'ID del messaggio a cui reagire
+ * @param {string} emoji - L'emoji da inviare
+ * @returns {Promise<object>} Il nuovo oggetto Reaction creato
+ */
+export async function apiCommentMessage(messageId, emoji) {
+  // Corrisponde a CommentMessageRequest
+  return apiFetch(`/messages/${messageId}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({
+      emoji: emoji
+    }),
+  });
+}
+
+/**
+ * Rimuove una reazione
+ * @param {string} messageId - L'ID del messaggio
+ * @param {string} reactionId - L'ID della reazione da rimuovere
+ * @returns {Promise<null>} Una promessa che si risolve (con null) se ha successo (204)
+ */
+export async function apiUncommentMessage(messageId, reactionId) {
+  return apiFetch(`/messages/${messageId}/reactions/${reactionId}`, {
+    method: 'DELETE',
+  });
+}

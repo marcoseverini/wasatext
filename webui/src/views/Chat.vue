@@ -1,11 +1,17 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-// 1. Importa la nuova funzione
-import { apiGetConversation, apiSendMessage, apiDeleteMessage } from '@/services/api.js';
+// 1. Importa le nuove funzioni
+import { 
+  apiGetConversation, 
+  apiSendMessage, 
+  apiCommentMessage, 
+  apiUncommentMessage 
+} from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
+// Variabili reattive
 const conversation = ref(null);
 const loading = ref(true);
 const errorMsg = ref('');
@@ -13,9 +19,14 @@ const newMessageText = ref('');
 const isSending = ref(false);
 
 const route = useRoute();
-const convId = route.params.id;
+const convId = route.params.id; 
 const loggedInUserId = localStorage.getItem('sessionToken');
 
+// 2. Nuove variabili per le reazioni
+const activePickerMsgId = ref(null); // Traccia quale selettore emoji è aperto
+const simpleEmojiPicker = ['👍', '❤️', '😂', '😮', '😢', '🙏']; // Il nostro selettore
+
+// Funzione per caricare la chat (invariata)
 onMounted(async () => {
   try {
     loading.value = true;
@@ -32,8 +43,9 @@ onMounted(async () => {
   }
 });
 
+// Funzione per inviare il messaggio (invariata)
 const handleSendMessage = async () => {
-  if (newMessageText.value.trim() === '') return;
+  if (newMessageText.value.trim() === '') return; 
   isSending.value = true;
   errorMsg.value = '';
   try {
@@ -47,19 +59,14 @@ const handleSendMessage = async () => {
   }
 };
 
-// 2. Aggiungi la funzione per cancellare il messaggio
+// Funzione per cancellare il messaggio (invariata)
 const handleDeleteMessage = async (messageId) => {
-  // Chiedi conferma
   if (!window.confirm("Sei sicuro di voler cancellare questo messaggio?")) {
     return;
   }
-
   errorMsg.value = '';
   try {
-    // Chiama l'API
     await apiDeleteMessage(messageId);
-    
-    // Aggiorna la UI: rimuovi il messaggio dalla lista
     conversation.value.messages = conversation.value.messages.filter(
       (msg) => msg.id !== messageId
     );
@@ -67,6 +74,69 @@ const handleDeleteMessage = async (messageId) => {
     errorMsg.value = err.message;
   }
 };
+
+
+// --- 3. NUOVE FUNZIONI PER LE REAZIONI ---
+
+/**
+ * Apre/Chiude il selettore emoji per un messaggio
+ */
+const togglePicker = (messageId) => {
+  if (activePickerMsgId.value === messageId) {
+    activePickerMsgId.value = null; // Chiude se è già aperto
+  } else {
+    activePickerMsgId.value = messageId; // Apre
+  }
+};
+
+/**
+ * Chiamato quando l'utente clicca su un emoji nel selettore
+ */
+const handleCommentMessage = async (messageId, emoji) => {
+  activePickerMsgId.value = null; // Chiude il selettore
+  errorMsg.value = '';
+
+  try {
+    // Chiama l'API per aggiungere la reazione
+    const newReaction = await apiCommentMessage(messageId, emoji);
+    
+    // Aggiorna la UI in tempo reale:
+    // 1. Trova il messaggio nella nostra lista
+    const msg = conversation.value.messages.find(m => m.id === messageId);
+    if (msg) {
+      // 2. Aggiungi la nuova reazione al suo array (se non esiste già per ID)
+      if (!msg.reactions.find(r => r.id === newReaction.id)) {
+        msg.reactions.push(newReaction);
+      }
+    }
+  } catch (err) {
+    errorMsg.value = err.message;
+  }
+};
+
+/**
+ * Chiamato quando l'utente clicca su una reazione ESISTENTE
+ */
+const handleUncommentMessage = async (message, reaction) => {
+  // Permetti la cancellazione SOLO se l'utente è il proprietario della reazione
+  if (reaction.user.id !== loggedInUserId) {
+    return; 
+  }
+
+  errorMsg.value = '';
+  try {
+    // Chiama l'API
+    await apiUncommentMessage(message.id, reaction.id);
+    
+    // Aggiorna la UI in tempo reale:
+    // Rimuovi la reazione dall'array
+    message.reactions = message.reactions.filter(r => r.id !== reaction.id);
+
+  } catch (err) {
+    errorMsg.value = err.message;
+  }
+};
+
 </script>
 
 <template>
@@ -92,14 +162,14 @@ const handleDeleteMessage = async (messageId) => {
           Questo è l'inizio della tua conversazione.
         </div>
         
-        <!-- 3. Modifica il template per includere il pulsante Cestino -->
+        <!-- Itera sui messaggi -->
         <div 
           v-for="msg in conversation.messages" 
           :key="msg.id"
-          class="message-wrapper d-flex align-items-center"
+          class="message-wrapper"
           :class="{ 'sent-wrapper': msg.sender.id === loggedInUserId }"> 
           
-          <!-- Pulsante Cestino (mostrato solo se 'sent') -->
+          <!-- Pulsante Cestino (come prima) -->
           <button 
             v-if="msg.sender.id === loggedInUserId"
             @click="handleDeleteMessage(msg.id)"
@@ -107,7 +177,27 @@ const handleDeleteMessage = async (messageId) => {
             <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#trash-2"/></svg>
           </button>
           
-          <!-- Bolla del Messaggio (invariata) -->
+          <!-- --- ▼▼▼ 4. NUOVO BLOCCO REAZIONI ▼▼▼ --- -->
+          <!-- Pulsante "Aggiungi Reazione" (+) -->
+          <button
+            @click="togglePicker(msg.id)"
+            class="btn btn-sm btn-outline-secondary react-btn">
+            <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#smile"/></svg>
+          </button>
+          
+          <!-- Selettore Emoji (appare quando 'activePickerMsgId' corrisponde) -->
+          <div v-if="activePickerMsgId === msg.id" class="emoji-picker">
+            <span 
+              v-for="emoji in simpleEmojiPicker" 
+              :key="emoji" 
+              @click="handleCommentMessage(msg.id, emoji)">
+              {{ emoji }}
+            </span>
+          </div>
+          <!-- --- ▲▲▲ FINE BLOCCO REAZIONI ▲▲▲ --- -->
+
+
+          <!-- Bolla del Messaggio (come prima) -->
           <div class="message-bubble" :class="{ 'sent': msg.sender.id === loggedInUserId }"> 
             <div class="message-sender" v-if="conversation.isGroup && msg.sender.id !== loggedInUserId">
               {{ msg.sender.username }}
@@ -118,6 +208,20 @@ const handleDeleteMessage = async (messageId) => {
             <div class="message-timestamp">
               {{ new Date(msg.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) }}
             </div>
+            
+            <!-- --- ▼▼▼ 5. NUOVO BLOCCO MOSTRA REAZIONI ▼▼▼ --- -->
+            <div v-if="msg.reactions.length > 0" class="reactions-list">
+              <span 
+                v-for="reaction in msg.reactions" 
+                :key="reaction.id"
+                class="reaction-badge"
+                :class="{ 'my-reaction': reaction.user.id === loggedInUserId }"
+                @click="handleUncommentMessage(msg, reaction)">
+                {{ reaction.emoji }}
+                <span class="reaction-count">{{ msg.reactions.filter(r => r.emoji === reaction.emoji).length }}</span>
+              </span>
+            </div>
+            <!-- --- ▲▲▲ FINE BLOCCO MOSTRA REAZIONI ▲▲▲ --- -->
           </div>
         </div>
       </div>
@@ -144,45 +248,43 @@ const handleDeleteMessage = async (messageId) => {
 </template>
 
 <style scoped>
-.chat-view {
-  height: calc(100vh - 100px); 
-}
-.chat-header {
-  flex-shrink: 0;
-}
-.message-list {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-}
+/* (Stili per .chat-view, .chat-header, .message-list, .message-input-area... rimangono invariati) */
+.chat-view { height: calc(100vh - 100px); }
+.chat-header { flex-shrink: 0; }
+.message-list { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; }
+.message-input-area { padding: 1rem; border-top: 1px solid #eee; flex-shrink: 0; }
 
-/* --- 4. Aggiunti stili per il pulsante Cestino --- */
+/* Stili Wrapper Messaggio */
 .message-wrapper {
-  gap: 8px;
+  display: flex; /* Cambiato da 'gap' a 'display:flex' per un controllo migliore */
+  align-items: center;
+  position: relative; /* Necessario per posizionare il selettore emoji */
 }
-/* Allinea a destra i messaggi inviati (bolla + pulsante) */
 .sent-wrapper {
   justify-content: flex-end;
-  flex-direction: row-reverse; /* Inverte l'ordine: prima la bolla, poi il pulsante */
+  flex-direction: row-reverse; 
 }
-.delete-btn {
+
+/* Stili Pulsanti Azione (Delete, React) */
+.delete-btn, .react-btn {
   border: none;
-  opacity: 0.1; /* Nascosto di default */
+  opacity: 0; /* Nascosti di default */
   transition: opacity 0.2s ease;
   padding: 4px;
+  background: #fff;
+  border-radius: 50%;
+  margin: 0 4px;
 }
-.message-wrapper:hover .delete-btn {
-  opacity: 1; /* Appare in hover */
+.message-wrapper:hover .delete-btn,
+.message-wrapper:hover .react-btn {
+  opacity: 1; /* Appaiono in hover */
 }
-.delete-btn svg {
+.delete-btn svg, .react-btn svg {
   width: 16px;
   height: 16px;
 }
-/* --- Fine stili Cestino --- */
 
-
+/* Bolla Messaggio */
 .message-bubble {
   background-color: #f1f0f0; 
   border-radius: 12px;
@@ -191,6 +293,7 @@ const handleDeleteMessage = async (messageId) => {
   max-width: 70%;
   align-self: flex-start;
   word-wrap: break-word;
+  position: relative; /* Necessario per le reazioni */
 }
 .message-bubble.sent {
   background-color: #dcf8c6; 
@@ -208,9 +311,64 @@ const handleDeleteMessage = async (messageId) => {
   text-align: right;
   margin-top: 5px;
 }
-.message-input-area {
-  padding: 1rem;
-  border-top: 1px solid #eee;
-  flex-shrink: 0;
+
+/* --- 6. NUOVI STILI PER LE REAZIONI --- */
+.emoji-picker {
+  position: absolute;
+  bottom: 100%; /* Appare sopra la bolla */
+  left: 40px; /* Posizionato vicino al pulsante + */
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+.sent-wrapper .emoji-picker {
+  left: auto; /* Se inviato, allinea a destra */
+  right: 40px; 
+}
+.emoji-picker span {
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.emoji-picker span:hover {
+  transform: scale(1.2);
+}
+
+.reactions-list {
+  position: absolute;
+  bottom: -15px; /* Sovrappone leggermente la bolla successiva */
+  left: 10px;
+  display: flex;
+  gap: 4px;
+}
+.sent .reactions-list {
+  left: auto;
+  right: 10px;
+}
+.reaction-badge {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.reaction-badge.my-reaction {
+  background-color: #e0f2ff; /* Evidenzia le mie reazioni */
+  border-color: #007bff;
+  cursor: pointer; /* Indica che posso cancellarla */
+}
+.reaction-count {
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-left: 4px;
+  color: #333;
 }
 </style>
