@@ -5,6 +5,8 @@ import { apiGetMyConversations } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import SearchModal from '@/components/SearchModal.vue'; 
+// 1. Importa il nuovo modale
+import CreateGroupModal from '@/components/CreateGroupModal.vue';
 
 // Definiamo le variabili reattive
 const conversations = ref([]);
@@ -12,6 +14,9 @@ const loading = ref(true);
 const errorMsg = ref('');
 const router = useRouter();
 const isSearchModalVisible = ref(false);
+
+// 2. Aggiungi la variabile per il nuovo modale
+const isCreateGroupModalVisible = ref(false);
 
 // Funzione per caricare le conversazioni
 const loadConversations = async () => {
@@ -32,17 +37,16 @@ const goToConversation = (convId) => {
   router.push(`/conversations/${convId}`);
 };
 
-// 3. Funzione (per ora vuota) per il modale di creazione gruppo
-const showCreateGroupModal = () => {
-  console.log("Apri modale crea gruppo");
-};
-
-// Funzione da chiamare quando il modale ha creato una chat
+// Funzione da chiamare quando il modale di ricerca ha creato una chat
 const onChatCreated = (newConvId) => {
   isSearchModalVisible.value = false; // Chiudi il modale
-  
-  // Invece di ricaricare la home, naviga direttamente alla nuova chat!
-  router.push(`/conversations/${newConvId}`);
+  router.push(`/conversations/${newConvId}`); // Naviga alla nuova chat
+};
+
+// 4. Aggiungi la funzione per il modale del gruppo
+const onGroupCreated = (newGroupId) => {
+  isCreateGroupModalVisible.value = false; // Chiudi il modale
+  router.push(`/conversations/${newGroupId}`); // Naviga alla nuova chat
 };
 
 // Carica le conversazioni al montaggio della pagina
@@ -58,12 +62,12 @@ onMounted(() => {
       <h1 class="h2">Le mie Conversazioni</h1>
       <div class="btn-toolbar mb-2 mb-md-0">
         
-        <!-- 5. Aggiorna il @click per aprire il modale -->
         <button type="button" class="btn btn-sm btn-outline-secondary me-2" @click="isSearchModalVisible = true">
           <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
           Cerca Utenti
         </button>
-        <button type="button" class="btn btn-sm btn-outline-primary" @click="showCreateGroupModal">
+        <!-- 5. Aggiorna il @click per aprire il modale -->
+        <button type="button" class="btn btn-sm btn-outline-primary" @click="isCreateGroupModalVisible = true">
           <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#users"/></svg>
           Crea Gruppo
         </button>
@@ -79,16 +83,16 @@ onMounted(() => {
       <p>Caricamento conversazioni...</p>
     </div>
 
-    <!-- Lista Conversazioni (se non sta caricando e non ci sono errori) -->
+    <!-- Lista Conversazioni -->
     <div v-if="!loading && !errorMsg">
       
       <!-- Stato Vuoto -->
       <div v-if="conversations.length === 0" class="text-center text-muted mt-5">
         <p>Non hai ancora nessuna conversazione.</p>
-        <p>Usa "Cerca Utenti" per iniziarne una!</p>
+        <p>Usa "Cerca Utenti" o "Crea Gruppo" per iniziarne una!</p>
       </div>
 
-      <!-- La Lista -->
+      <!-- La Lista (questa parte è invariata) -->
       <div v-else class="list-group">
         <a 
           href="#"
@@ -109,22 +113,27 @@ onMounted(() => {
           </div>
         </a>
       </div>
-
     </div>
 
-    <!-- 6. Aggiungi il componente Modale al template -->
-    <!-- È "nascosto" da un v-if al suo interno -->
+    <!-- Modale Ricerca Utenti (invariato) -->
     <SearchModal 
       :show="isSearchModalVisible" 
       @close="isSearchModalVisible = false"
       @chat-created="onChatCreated"
     />
 
+    <!-- 6. Aggiungi il nuovo modale per creare i gruppi -->
+    <CreateGroupModal
+      :show="isCreateGroupModalVisible"
+      @close="isCreateGroupModalVisible = false"
+      @group-created="onGroupCreated"
+    />
+
   </div>
 </template>
 
 <style>
-/* Stili per rendere la lista più simile a un'app di chat */
+/* (stili invariati) */
 .list-group-item-action {
   align-items: center;
 }

@@ -118,4 +118,21 @@ export async function apiSendMessage(conversationId, messageText) {
   });
 }
 
+/**
+ * Crea un nuovo gruppo
+ * @param {string} groupName - Il nome del nuovo gruppo
+ * @param {string[]} memberIds - Un array di ID utente da includere
+ * @returns {Promise<object>} La nuova conversazione di gruppo
+ */
+export async function apiCreateGroup(groupName, memberIds) {
+  // Corrisponde a CreateGroupRequest
+  return apiFetch('/groups', {
+    method: 'POST',
+    body: JSON.stringify({
+      groupName: groupName,
+      memberIds: memberIds,
+    }),
+  });
+}
+
 // (Aggiungeremo le altre qui quando serviranno)
