@@ -102,4 +102,20 @@ export async function apiGetConversation(conversationId) {
   return apiFetch(`/conversations/${conversationId}`);
 }
 
+/**
+ * Invia un nuovo messaggio di testo a una conversazione
+ * @param {string} conversationId - L'ID della conversazione
+ * @param {string} messageText - Il testo da inviare
+ * @returns {Promise<object>} Il nuovo oggetto messaggio creato
+ */
+export async function apiSendMessage(conversationId, messageText) {
+  // Corrisponde allo schema SendMessageRequest (con 'text')
+  return apiFetch(`/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({
+      text: messageText
+    }),
+  });
+}
+
 // (Aggiungeremo le altre qui quando serviranno)
