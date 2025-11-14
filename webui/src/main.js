@@ -1,16 +1,21 @@
-import {createApp, reactive} from 'vue'
+import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import axios from './services/axios.js';
 import ErrorMsg from './components/ErrorMsg.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
 
+// Importa gli stili di Bootstrap (dalla cartella public) e i tuoi stili
 import './assets/dashboard.css'
 import './assets/main.css'
 
 const app = createApp(App)
-app.config.globalProperties.$axios = axios;
+
+// Rimuoviamo la vecchia logica di '$axios'
+// Il nostro 'api.js' è più pulito e viene importato dove serve.
+
+// Componenti globali
 app.component("ErrorMsg", ErrorMsg);
 app.component("LoadingSpinner", LoadingSpinner);
-app.use(router)
+
+app.use(router) // Attiva il router
 app.mount('#app')
