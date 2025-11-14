@@ -32,8 +32,11 @@ const handleSearch = async () => {
   try {
     // Chiama l'API
     const data = await apiSearchUsers(searchQuery.value);
-    // Ricorda che /users restituisce un array nudo, non un oggetto
-    searchResults.value = data || []; 
+    
+    // --- CORREZIONE IMPORTANTE ---
+    // Il nostro backend (correttamente) restituisce { "users": [...] }
+    // Dobbiamo estrarre l'array 'data.users'
+    searchResults.value = data.users || []; 
     
     if (searchResults.value.length === 0) {
       errorMsg.value = "Nessun utente trovato.";
