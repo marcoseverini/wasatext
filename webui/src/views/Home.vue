@@ -13,9 +13,6 @@ const errorMsg = ref('');
 const router = useRouter();
 const isSearchModalVisible = ref(false);
 
-// 2. Aggiungi una variabile per controllare la visibilità del modale
-const isSearchModalVisible = ref(false);
-
 // Funzione per caricare le conversazioni
 const loadConversations = async () => {
   try {
