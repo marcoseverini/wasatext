@@ -96,6 +96,17 @@ func (m MessageContent) Validate() error {
 	return nil
 }
 
+type SearchQuery string
+
+func (s SearchQuery) Validate() error {
+	// Prende una stringa e verifica se è una query di ricerca valida
+	// (come da YAML: min 1, max 16)
+	if len(s) < 1 || len(s) > 16 {
+		return errors.New("il termine di ricerca deve essere tra 1 e 16 caratteri")
+	}
+	return nil
+}
+
 // Schemi di richiesta/risposta API
 
 type ErrorResponse struct { // components/schemas/ErrorResponse

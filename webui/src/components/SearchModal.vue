@@ -135,12 +135,14 @@ const handleStartChat = async (userId) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1050; /* Sopra la navbar di bootstrap */
+  z-index: 1050;
 }
 
 .modal-content {
   width: 100%;
   max-width: 500px;
   margin: 1rem;
+  background-color: white;
+  border-radius: 0.375rem; /* Aggiunge i bordi arrotondati del 'card' */
 }
 </style>

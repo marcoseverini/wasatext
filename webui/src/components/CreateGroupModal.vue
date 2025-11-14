@@ -187,20 +187,21 @@ const handleCreateGroup = async () => {
   width: 100%;
   max-width: 500px;
   margin: 1rem;
+  background-color: white; /* --- AGGIUNGI QUESTA RIGA --- */
+  border-radius: 0.375rem; /* Aggiunge i bordi arrotondati del 'card' */
 }
 
+/* (il resto degli stili .search-results-box, .badge, ecc. rimane uguale) */
 .search-results-box {
   max-height: 150px;
   overflow-y: auto;
   border: 1px solid #dee2e6;
   border-radius: 0.375rem;
 }
-
 .selected-members-list {
   display: flex;
   flex-wrap: wrap;
 }
-
 .badge .btn-close {
   font-size: 0.65em;
   padding: 0.35em;

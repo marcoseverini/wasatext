@@ -19,14 +19,15 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 
 	searchQuery := r.URL.Query().Get("username") // components/parameters/SearchUsername
 
-	var username Username = Username(searchQuery) // components/schemas/Username
-	if err := username.Validate(); err != nil {
+	// var username Username = Username(searchQuery) // SBAGLIATO
+	var searchTerm SearchQuery = SearchQuery(searchQuery) // GIUSTO
+	if err := searchTerm.Validate(); err != nil {         // GIUSTO
 		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
 		return
 	}
 
 	// Esegue la ricerca nel database
-	users, err := rt.db.SearchUsers(string(username)) // Lista di components/schemas/User
+	users, err := rt.db.SearchUsers(string(searchTerm)) // Lista di components/schemas/User
 	if err != nil {
 		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante la ricerca degli utenti.") // 500 Internal Server Error
 		return
@@ -40,7 +41,7 @@ func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprou
 		}
 	}
 
-	response := database.UserList{
+	response := database.UserList{ // <- NOTA: Qui c'è un'incongruenza
 		Users: filteredUsers,
 	}
 

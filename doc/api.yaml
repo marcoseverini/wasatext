@@ -537,7 +537,7 @@ components:
       required: true
       description: Stringa da cercare nel nome utente (case-insensitive).
       schema:
-        $ref: '#/components/schemas/Username'
+        $ref: '#/components/schemas/SearchQuery'
 
   responses:
 
@@ -651,6 +651,14 @@ components:
       minLength: 1
       maxLength: 4000
       example: "Ciao!"
+
+    SearchQuery:
+      description: Stringa per la ricerca (min 1, max 16).
+      type: string
+      pattern: '^.+$'
+      minLength: 1
+      maxLength: 16
+      example: "ma"
 
 
     # Strutture del Database (service/database/structs.go)
