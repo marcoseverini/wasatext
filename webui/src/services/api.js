@@ -70,4 +70,27 @@ export function apiLogout() {
     window.location.reload();
 }
 
+/**
+ * Cerca utenti in base al nome
+ * @param {string} username - Il termine di ricerca
+ * @returns {Promise<object>} La lista degli utenti
+ */
+export async function apiSearchUsers(username) {
+  // Costruisce la query string e chiama GET /users
+  return apiFetch(`/users?username=${encodeURIComponent(username)}`);
+}
+
+/**
+ * Inizia una nuova conversazione 1-a-1
+ * @param {string} userId - L'ID dell'utente con cui chattare
+ * @returns {Promise<object>} La nuova conversazione
+ */
+export async function apiStartConversation(userId) {
+  // Chiama POST /conversations (corrisponde a UserIdRequest)
+  return apiFetch('/conversations', {
+    method: 'POST',
+    body: JSON.stringify({ userId: userId }),
+  });
+}
+
 // (Aggiungeremo le altre qui quando serviranno)

@@ -4,25 +4,25 @@ import { useRouter } from 'vue-router';
 import { apiGetMyConversations } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
+// 1. Importa il nuovo componente Modale
+import SearchModal from '@/components/SearchModal.vue'; 
 
-// Variabili reattive
-const conversations = ref([]); // La lista delle chat
+// Definiamo le variabili reattive
+const conversations = ref([]);
 const loading = ref(true);
 const errorMsg = ref('');
-const router = useRouter(); // Per navigare
+const router = useRouter();
+
+// 2. Aggiungi una variabile per controllare la visibilità del modale
+const isSearchModalVisible = ref(false);
 
 // Funzione per caricare le conversazioni
 const loadConversations = async () => {
   try {
     loading.value = true;
     errorMsg.value = '';
-    
-    // Chiama l'API che abbiamo definito in api.js
     const data = await apiGetMyConversations();
-    
-    // Salva solo l'array
     conversations.value = data.conversations || [];
-    
   } catch (err) {
     errorMsg.value = err.message;
   } finally {
@@ -30,25 +30,24 @@ const loadConversations = async () => {
   }
 };
 
-// Funzione (per ora vuota) per andare alla chat
+// Funzione per andare alla chat
 const goToConversation = (convId) => {
   // In futuro: router.push(`/conversations/${convId}`);
   console.log("Andiamo alla chat:", convId);
 };
 
-// Funzione (per ora vuota) per mostrare il modale di ricerca
-const showSearchModal = () => {
-  console.log("Apri modale ricerca utenti");
-  // Qui implementeremo il modale come Lachi
-};
-
-// Funzione (per ora vuota) per mostrare il modale di creazione gruppo
+// 3. Funzione (per ora vuota) per il modale di creazione gruppo
 const showCreateGroupModal = () => {
   console.log("Apri modale crea gruppo");
-  // Qui implementeremo il modale
 };
 
-// onMounted() viene eseguito quando il componente viene caricato
+// 4. Funzione da chiamare quando il modale ha creato una chat
+const onChatCreated = () => {
+  isSearchModalVisible.value = false; // Chiudi il modale
+  loadConversations(); // Ricarica la lista delle conversazioni
+};
+
+// Carica le conversazioni al montaggio della pagina
 onMounted(() => {
   loadConversations();
 });
@@ -56,10 +55,13 @@ onMounted(() => {
 
 <template>
   <div>
+    <!-- Intestazione della Pagina -->
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
       <h1 class="h2">Le mie Conversazioni</h1>
       <div class="btn-toolbar mb-2 mb-md-0">
-        <button type="button" class="btn btn-sm btn-outline-secondary me-2" @click="showSearchModal">
+        
+        <!-- 5. Aggiorna il @click per aprire il modale -->
+        <button type="button" class="btn btn-sm btn-outline-secondary me-2" @click="isSearchModalVisible = true">
           <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
           Cerca Utenti
         </button>
@@ -70,20 +72,25 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Messaggio di Errore -->
     <ErrorMsg v-if="errorMsg" :msg="errorMsg" />
 
+    <!-- Spinner di Caricamento -->
     <div v-if="loading" class="text-center mt-5">
       <LoadingSpinner />
       <p>Caricamento conversazioni...</p>
     </div>
 
+    <!-- Lista Conversazioni (se non sta caricando e non ci sono errori) -->
     <div v-if="!loading && !errorMsg">
       
+      <!-- Stato Vuoto -->
       <div v-if="conversations.length === 0" class="text-center text-muted mt-5">
         <p>Non hai ancora nessuna conversazione.</p>
         <p>Usa "Cerca Utenti" per iniziarne una!</p>
       </div>
 
+      <!-- La Lista -->
       <div v-else class="list-group">
         <a 
           href="#"
@@ -107,6 +114,14 @@ onMounted(() => {
 
     </div>
 
+    <!-- 6. Aggiungi il componente Modale al template -->
+    <!-- È "nascosto" da un v-if al suo interno -->
+    <SearchModal 
+      :show="isSearchModalVisible" 
+      @close="isSearchModalVisible = false"
+      @chat-created="onChatCreated"
+    />
+
   </div>
 </template>
 
@@ -119,6 +134,6 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 40vw; /* Impedisce al testo di andare a capo */
+  max-width: 40vw; 
 }
 </style>
