@@ -62,4 +62,12 @@ export async function apiGetMyConversations() {
     return apiFetch('/conversations'); 
 }
 
+// Rimuove il token e ricarica la pagina.
+export function apiLogout() {
+    localStorage.removeItem('sessionToken');
+    // Ricaricando, il router guard (beforeEach) ci riporterà
+    // automaticamente alla pagina di login.
+    window.location.reload();
+}
+
 // (Aggiungeremo le altre qui quando serviranno)
