@@ -1,4 +1,5 @@
 <script setup>
+
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { apiLogout } from '@/services/api.js';
@@ -12,11 +13,12 @@ const isLoginPage = computed(() => route.name === 'Login');
 const handleLogout = () => {
   apiLogout();
 };
+
 </script>
 
 <template>
 
-  <!-- MOSTRA QUESTO BLOCCO (IL LAYOUT COMPLETO) SOLO SE NON SIAMO SULLA PAGINA DI LOGIN -->
+  <!-- Layout visualizzato se non si è sulla pagina di Login --> 
   <template v-if="!isLoginPage">
     <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
       <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#/">WASAText</a>
@@ -51,30 +53,29 @@ const handleLogout = () => {
                   Home
                 </RouterLink>
               </li>
-              <!-- Aggiungeremo qui 'Cerca Utenti' e 'Settings' -->
             </ul>
 
           </div>
         </nav>
 
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-          <!-- <RouterView /> carica 'Home.vue' o 'Chat.vue' qui dentro -->
-          <RouterView />
+          <!-- <RouterView /> carica 'Home.vue' o 'Chat.vue' qui -->
+          <RouterView /> 
         </main>
       </div>
     </div>
   </template>
 
-  <!-- MOSTRA QUESTO BLOCCO SOLO SE SIAMO SULLA PAGINA DI LOGIN -->
+  <!-- Pagina di Login, senza layout -->
   <template v-else>
-    <!-- <RouterView /> carica 'Login.vue' qui, a schermo intero senza layout -->
+    <!-- <RouterView /> carica 'Login.vue' qui -->
     <RouterView />
   </template>
 
 </template>
 
 <style>
-/* Stili globali per far funzionare bene i link attivi e le icone */
+/* Stili globali */
 .feather {
   width: 16px;
   height: 16px;

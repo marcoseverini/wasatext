@@ -1,7 +1,7 @@
-// Leggiamo l'URL del backend dal file .env
+// Legge l'URL del backend dal file .env
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Una funzione che gestisce la logica del token e imposta gli header corretti per noi.
+// Gestisce la logica del token e imposta gli header corretti.
 async function apiFetch(endpoint, options = {}) {
 
     // Prepara gli header
@@ -10,19 +10,19 @@ async function apiFetch(endpoint, options = {}) {
         ...options.headers,
     };
 
-    // Leggi il token salvato dal localStorage
+    // Legge il token salvato dal localStorage
     const token = localStorage.getItem('sessionToken');
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Costruisci la richiesta
+    // Costruisce la richiesta
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: headers,
     });
 
-    // Se la risposta è 401 (token non valido/scaduto),
+    // Se la risposta è 401 (token non valido/scaduto), 
     // cancella il token e ricarica la pagina (che forzerà il login)
     if (response.status === 401) {
         localStorage.removeItem('sessionToken');
@@ -42,7 +42,7 @@ async function apiFetch(endpoint, options = {}) {
     return response.json();
 }
 
-// Definizioni delle nostre funzioni API
+// Definizione delle funzioni API
 
 // Esegue il login e salva il token
 export async function apiLogin(username) {
