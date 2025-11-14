@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 import { apiGetMyConversations } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
-// 1. Importa il nuovo componente Modale
 import SearchModal from '@/components/SearchModal.vue'; 
 
 // Definiamo le variabili reattive
@@ -12,6 +11,7 @@ const conversations = ref([]);
 const loading = ref(true);
 const errorMsg = ref('');
 const router = useRouter();
+const isSearchModalVisible = ref(false);
 
 // 2. Aggiungi una variabile per controllare la visibilità del modale
 const isSearchModalVisible = ref(false);
@@ -32,8 +32,7 @@ const loadConversations = async () => {
 
 // Funzione per andare alla chat
 const goToConversation = (convId) => {
-  // In futuro: router.push(`/conversations/${convId}`);
-  console.log("Andiamo alla chat:", convId);
+  router.push(`/conversations/${convId}`);
 };
 
 // 3. Funzione (per ora vuota) per il modale di creazione gruppo
@@ -41,10 +40,12 @@ const showCreateGroupModal = () => {
   console.log("Apri modale crea gruppo");
 };
 
-// 4. Funzione da chiamare quando il modale ha creato una chat
-const onChatCreated = () => {
+// Funzione da chiamare quando il modale ha creato una chat
+const onChatCreated = (newConvId) => {
   isSearchModalVisible.value = false; // Chiudi il modale
-  loadConversations(); // Ricarica la lista delle conversazioni
+  
+  // Invece di ricaricare la home, naviga direttamente alla nuova chat!
+  router.push(`/conversations/${newConvId}`);
 };
 
 // Carica le conversazioni al montaggio della pagina

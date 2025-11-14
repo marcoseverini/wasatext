@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import Home from '@/views/Home.vue';
 import Login from '@/views/Login.vue';
+import Chat from '@/views/Chat.vue';
 
 const routes = [
   {
@@ -14,6 +15,12 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login,
+  },
+  {
+    // :id è un parametro dinamico (es. /conversations/conv-123)
+    path: '/conversations/:id', 
+    name: 'Chat',
+    component: Chat,
   },
 ];
 

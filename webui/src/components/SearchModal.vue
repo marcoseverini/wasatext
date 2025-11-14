@@ -54,11 +54,14 @@ const handleStartChat = async (userId) => {
   errorMsg.value = '';
   
   try {
-    // Chiama l'API per creare la chat 1-a-1
-    await apiStartConversation(userId);
+
+    // 1. Chiama l'API e ASPETTA la risposta
+    const newConversation = await apiStartConversation(userId);
     
-    // Successo! Avvisa il genitore (Home.vue)
-    emit('chat-created');
+    // 2. Successo! Avvisa il genitore (Home.vue)
+    //    e passagli l'ID della chat appena creata.
+    emit('chat-created', newConversation.id);
+    
     
   } catch (err) {
     errorMsg.value = err.message;

@@ -93,4 +93,13 @@ export async function apiStartConversation(userId) {
   });
 }
 
+/**
+ * Ottiene i dettagli completi di una singola conversazione
+ * @param {string} conversationId - L'ID della conversazione
+ * @returns {Promise<object>} L'oggetto conversazione (con messaggi, membri, ecc.)
+ */
+export async function apiGetConversation(conversationId) {
+  return apiFetch(`/conversations/${conversationId}`);
+}
+
 // (Aggiungeremo le altre qui quando serviranno)
