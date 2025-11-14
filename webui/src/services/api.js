@@ -135,4 +135,17 @@ export async function apiCreateGroup(groupName, memberIds) {
   });
 }
 
+/**
+ * Cancella un messaggio
+ * @param {string} messageId - L'ID del messaggio da cancellare
+ * @returns {Promise<null>} Una promessa che si risolve (con null) se ha successo
+ */
+export async function apiDeleteMessage(messageId) {
+  // Chiama l'endpoint DELETE. 
+  // Il nostro 'apiFetch' gestisce già la risposta 204 No Content.
+  return apiFetch(`/messages/${messageId}`, {
+    method: 'DELETE',
+  });
+}
+
 // (Aggiungeremo le altre qui quando serviranno)
