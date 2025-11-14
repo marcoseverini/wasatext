@@ -6,7 +6,8 @@ import {
   apiGetConversation, 
   apiSendMessage, 
   apiCommentMessage, 
-  apiUncommentMessage 
+  apiUncommentMessage,
+  apiDeleteMessage
 } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
