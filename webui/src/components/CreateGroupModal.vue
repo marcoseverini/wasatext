@@ -94,22 +94,22 @@ const handleCreateGroup = async () => {
     <div class="modal-content card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="modal-title mb-0">Crea un nuovo gruppo</h5>
-        <button type="button" class="btn-close" @click="emit('close')" aria-label="Close"></button>
+        <button type="button" class="btn-close" aria-label="Close" @click="emit('close')" />
       </div>
       
       <div class="card-body">
         <form @submit.prevent="handleCreateGroup">
-          
           <!-- Input Nome Gruppo -->
           <div class="mb-3">
             <label for="groupNameInput" class="form-label">Nome Gruppo:</label>
             <input 
-              type="text" 
+              id="groupNameInput" 
+              v-model="groupName" 
+              type="text"
               class="form-control" 
-              id="groupNameInput"
-              placeholder="Es: Amici di WASA" 
-              v-model="groupName"
-              required>
+              placeholder="Es: Amici di WASA"
+              required
+            >
           </div>
 
           <!-- Input Ricerca Membri -->
@@ -117,15 +117,16 @@ const handleCreateGroup = async () => {
             <label for="searchUserInput" class="form-label">Aggiungi Membri:</label>
             <div class="input-group">
               <input 
-                type="text" 
-                id="searchUserInput"
-                class="form-control" 
-                placeholder="Cerca un utente..." 
+                id="searchUserInput" 
                 v-model="searchQuery"
-                @keydown.enter.prevent="handleSearch">
-              <button class="btn btn-outline-secondary" type="button" @click="handleSearch" :disabled="loadingSearch">
+                type="text" 
+                class="form-control" 
+                placeholder="Cerca un utente..."
+                @keydown.enter.prevent="handleSearch"
+              >
+              <button class="btn btn-outline-secondary" type="button" :disabled="loadingSearch" @click="handleSearch">
                 <LoadingSpinner v-if="loadingSearch" />
-                <svg v-else class="feather"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
+                <svg v-else class="feather"><use href="/feather-sprite-v4.29.0.svg#search" /></svg>
               </button>
             </div>
           </div>
@@ -134,14 +135,17 @@ const handleCreateGroup = async () => {
           <ErrorMsg v-if="errorMsg" :msg="errorMsg" />
           <div v-if="searchResults.length > 0" class="list-group list-group-flush mb-3 search-results-box">
             <a 
+              v-for="user in searchResults"
+              :key="user.id" 
               href="#"
-              v-for="user in searchResults" 
-              :key="user.id"
+              class="list-group-item list-group-item-action d-flex gap-3 py-2 align-items-center"
               @click.prevent="addMember(user)"
-              class="list-group-item list-group-item-action d-flex gap-3 py-2 align-items-center">
+            >
               
-              <img :src="user.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + user.username.charAt(0)" 
-                   alt="foto" width="40" height="40" class="rounded-circle flex-shrink-0">
+              <img
+                :src="user.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + user.username.charAt(0)" 
+                alt="foto" width="40" height="40" class="rounded-circle flex-shrink-0"
+              >
               <h6 class="mb-0">{{ user.username }}</h6>
             </a>
           </div>
@@ -152,7 +156,7 @@ const handleCreateGroup = async () => {
             <div class="selected-members-list">
               <span v-for="member in selectedMembers" :key="member.id" class="badge rounded-pill text-bg-primary me-2 mb-2">
                 {{ member.username }}
-                <button type="button" class="btn-close btn-close-white ms-1" @click="removeMember(member.id)" aria-label="Remove"></button>
+                <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" @click="removeMember(member.id)" />
               </span>
             </div>
           </div>
@@ -162,7 +166,6 @@ const handleCreateGroup = async () => {
             <LoadingSpinner v-if="loadingCreate" />
             <span v-else>Crea Gruppo</span>
           </button>
-          
         </form>
       </div>
     </div>

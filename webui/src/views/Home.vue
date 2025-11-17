@@ -60,14 +60,13 @@ onMounted(() => {
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
       <h1 class="h2">Le mie Conversazioni</h1>
       <div class="btn-toolbar mb-2 mb-md-0">
-        
         <button type="button" class="btn btn-sm btn-outline-secondary me-2" @click="isSearchModalVisible = true">
-          <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#search"/></svg>
+          <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#search" /></svg>
           Cerca Utenti
         </button>
         <!-- 5. Aggiorna il @click per aprire il modale -->
         <button type="button" class="btn btn-sm btn-outline-primary" @click="isCreateGroupModalVisible = true">
-          <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#users"/></svg>
+          <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#users" /></svg>
           Crea Gruppo
         </button>
       </div>
@@ -84,7 +83,6 @@ onMounted(() => {
 
     <!-- Lista Conversazioni -->
     <div v-if="!loading && !errorMsg">
-      
       <!-- Stato Vuoto -->
       <div v-if="conversations.length === 0" class="text-center text-muted mt-5">
         <p>Non hai ancora nessuna conversazione.</p>
@@ -94,14 +92,17 @@ onMounted(() => {
       <!-- La Lista (questa parte è invariata) -->
       <div v-else class="list-group">
         <a 
+          v-for="convo in conversations"
+          :key="convo.id" 
           href="#"
-          v-for="convo in conversations" 
-          :key="convo.id"
+          class="list-group-item list-group-item-action d-flex gap-3 py-3"
           @click.prevent="goToConversation(convo.id)"
-          class="list-group-item list-group-item-action d-flex gap-3 py-3">
+        >
           
-          <img :src="convo.photoUrl || 'https://placehold.co/64x64/25d366/FFF?text=' + convo.name.charAt(0)" 
-               alt="foto" width="64" height="64" class="rounded-circle flex-shrink-0">
+          <img
+            :src="convo.photoUrl || 'https://placehold.co/64x64/25d366/FFF?text=' + convo.name.charAt(0)" 
+            alt="foto" width="64" height="64" class="rounded-circle flex-shrink-0"
+          >
           
           <div class="d-flex gap-2 w-100 justify-content-between">
             <div>
@@ -127,7 +128,6 @@ onMounted(() => {
       @close="isCreateGroupModalVisible = false"
       @group-created="onGroupCreated"
     />
-
   </div>
 </template>
 

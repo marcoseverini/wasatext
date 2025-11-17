@@ -7,20 +7,22 @@
       <form @submit.prevent="handleLogin">
         <div class="form-floating">
           <input 
-            type="text" 
-            class="form-control" 
             id="usernameInput" 
+            v-model="username" 
+            type="text" 
+            class="form-control"
             placeholder="Il tuo nome utente"
-            v-model="username"
-            required>
+            required
+          >
           <label for="usernameInput">Nome utente</label>
         </div>
 
         <button 
           class="w-100 btn btn-lg btn-primary mt-3" 
           type="submit"
-          :disabled="loading">
-          <span v-if="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          :disabled="loading"
+        >
+          <span v-if="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
           <span v-else>Entra</span>
         </button>
         

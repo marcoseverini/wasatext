@@ -83,11 +83,12 @@ const handleDeleteMessage = async (messageId) => {
     </div>
 
     <div v-if="!loading && !errorMsg && conversation" class="d-flex flex-column h-100">
-      
       <!-- Intestazione Chat -->
       <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header">
-        <img :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
-             alt="foto" width="40" height="40" class="rounded-circle me-3">
+        <img
+          :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
+          alt="foto" width="40" height="40" class="rounded-circle me-3"
+        >
         <h1 class="h4 mb-0">{{ conversation.name }}</h1>
       </div>
 
@@ -102,19 +103,20 @@ const handleDeleteMessage = async (messageId) => {
           v-for="msg in conversation.messages" 
           :key="msg.id"
           class="message-wrapper d-flex align-items-center"
-          :class="{ 'sent-wrapper': msg.sender.id === loggedInUserId }"> 
-          
+          :class="{ 'sent-wrapper': msg.sender.id === loggedInUserId }"
+        >
           <!-- Pulsante Cestino (mostrato solo se 'sent') -->
           <button 
             v-if="msg.sender.id === loggedInUserId"
+            class="btn btn-sm btn-outline-danger delete-btn"
             @click="handleDeleteMessage(msg.id)"
-            class="btn btn-sm btn-outline-danger delete-btn">
-            <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#trash-2"/></svg>
+          >
+            <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#trash-2" /></svg>
           </button>
           
           <!-- Bolla del Messaggio -->
           <div class="message-bubble" :class="{ 'sent': msg.sender.id === loggedInUserId }"> 
-            <div class="message-sender" v-if="conversation.isGroup && msg.sender.id !== loggedInUserId">
+            <div v-if="conversation.isGroup && msg.sender.id !== loggedInUserId" class="message-sender">
               {{ msg.sender.username }}
             </div>
             <div class="message-content">
@@ -129,21 +131,21 @@ const handleDeleteMessage = async (messageId) => {
       
       <!-- Area Scrittura Messaggio -->
       <div class="message-input-area mt-auto">
-        <form @submit.prevent="handleSendMessage" class="d-flex gap-2">
+        <form class="d-flex gap-2" @submit.prevent="handleSendMessage">
           <input 
+            v-model="newMessageText" 
             type="text" 
             class="form-control" 
-            placeholder="Scrivi un messaggio..." 
-            v-model="newMessageText"
+            placeholder="Scrivi un messaggio..."
             :disabled="isSending"
-            autocomplete="off">
+            autocomplete="off"
+          >
           <button type="submit" class="btn btn-primary" :disabled="isSending">
             <LoadingSpinner v-if="isSending" />
-            <svg v-else class="feather" style="width: 20px; height: 20px;"><use href="/feather-sprite-v4.29.0.svg#send"/></svg>
+            <svg v-else class="feather" style="width: 20px; height: 20px;"><use href="/feather-sprite-v4.29.0.svg#send" /></svg>
           </button>
         </form>
       </div>
-      
     </div>
   </div>
 </template>

@@ -17,7 +17,6 @@ const handleLogout = () => {
 </script>
 
 <template>
-
   <!-- Layout visualizzato se non si è sulla pagina di Login --> 
   <template v-if="!isLoginPage">
     <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
@@ -28,13 +27,13 @@ const handleLogout = () => {
         <div class="nav-item text-nowrap">
           <a class="nav-link px-3" href="#" @click.prevent="handleLogout">
             Logout
-            <svg class="feather" style="width: 24px; height: 24px; vertical-align: middle; margin-left: 5px;"><use href="/feather-sprite-v4.29.0.svg#log-out"/></svg>
+            <svg class="feather" style="width: 24px; height: 24px; vertical-align: middle; margin-left: 5px;"><use href="/feather-sprite-v4.29.0.svg#log-out" /></svg>
           </a>
         </div>
       </div>
       
       <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
+        <span class="navbar-toggler-icon" />
       </button>
     </header>
 
@@ -42,19 +41,17 @@ const handleLogout = () => {
       <div class="row">
         <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
           <div class="position-sticky pt-3 sidebar-sticky">
-            
             <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
               <span>Conversazioni</span>
             </h6>
             <ul class="nav flex-column">
               <li class="nav-item">
                 <RouterLink to="/" class="nav-link" active-class="active">
-                  <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#home"/></svg>
+                  <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#home" /></svg>
                   Home
                 </RouterLink>
               </li>
             </ul>
-
           </div>
         </nav>
 
@@ -71,7 +68,6 @@ const handleLogout = () => {
     <!-- <RouterView /> carica 'Login.vue' qui -->
     <RouterView />
   </template>
-
 </template>
 
 <style>
