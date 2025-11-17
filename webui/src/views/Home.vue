@@ -5,7 +5,6 @@ import { apiGetMyConversations } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import SearchModal from '@/components/SearchModal.vue'; 
-// 1. Importa il nuovo modale
 import CreateGroupModal from '@/components/CreateGroupModal.vue';
 
 // Definiamo le variabili reattive
@@ -15,7 +14,7 @@ const errorMsg = ref('');
 const router = useRouter();
 const isSearchModalVisible = ref(false);
 
-// 2. Aggiungi la variabile per il nuovo modale
+// Aggiungi la variabile per il nuovo modale
 const isCreateGroupModalVisible = ref(false);
 
 // Funzione per caricare le conversazioni
@@ -43,7 +42,7 @@ const onChatCreated = (newConvId) => {
   router.push(`/conversations/${newConvId}`); // Naviga alla nuova chat
 };
 
-// 4. Aggiungi la funzione per il modale del gruppo
+// Aggiungi la funzione per il modale del gruppo
 const onGroupCreated = (newGroupId) => {
   isCreateGroupModalVisible.value = false; // Chiudi il modale
   router.push(`/conversations/${newGroupId}`); // Naviga alla nuova chat

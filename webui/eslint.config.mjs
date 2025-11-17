@@ -10,6 +10,19 @@ import vue from 'eslint-plugin-vue';
 
 // noinspection JSUnusedGlobalSymbols
 export default [
+
+	{
+        ignores: [
+            "**/node_modules/",
+            "dist/",
+            "public/",      // <--- Questo zittisce gli errori di Bootstrap
+            ".yarn/",
+            ".pnp.*",
+            "**/*.min.js",  // Ignora file minificati
+            "**/*.bundle.js" // Ignora bundle
+        ]
+    },
+	
 	... vue.configs[ "flat/recommended" ],
 	{
 		rules: {
