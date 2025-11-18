@@ -8,9 +8,9 @@ import (
 )
 
 // POST /session
-func (rt *_router) login(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
-	var req LoginRequest // components/schemas/LoginRequest
+	var req DoLoginRequest // components/schemas/DoLoginRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
@@ -28,7 +28,7 @@ func (rt *_router) login(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 		return
 	}
 
-	res := LoginResponse{ // components/schemas/LoginResponse
+	res := DoLoginResponse{ // components/schemas/DoLoginResponse
 		Identifier: UserID(user.ID),
 	}
 

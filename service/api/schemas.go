@@ -113,11 +113,11 @@ type ErrorResponse struct { // components/schemas/ErrorResponse
 	Message string `json:"message"`
 }
 
-type LoginRequest struct { // components/schemas/LoginRequest
+type DoLoginRequest struct { // components/schemas/DoLoginRequest
 	Username Username `json:"username"`
 }
 
-type LoginResponse struct { // components/schemas/LoginResponse
+type DoLoginResponse struct { // components/schemas/DoLoginResponse
 	Identifier UserID `json:"identifier"`
 }
 

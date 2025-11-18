@@ -34,7 +34,7 @@ paths:
       description: |-
         Se l'utente esiste, viene restituito il suo identificativo.
         Se l'utente non esiste, viene creato e viene restituito il suo identificativo.
-      operationId: login
+      operationId: doLogin
       security: [] # Nessuna autenticazione richiesta per il login
       requestBody:
         description: Dettagli dell'utente per il login/registrazione.
@@ -42,14 +42,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: '#/components/schemas/DoLoginRequest'
       responses:
         '201': 
           description: Azione di login/registrazione avvenuta con successo.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: '#/components/schemas/DoLoginResponse'
         '400': 
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -786,7 +786,7 @@ components:
           example: "Si è verificato un errore."
       required: ["message"]
 
-    LoginRequest:
+    DoLoginRequest:
       description: Dati inviati per effettuare il login o la registrazione.
       type: object
       properties:
@@ -794,7 +794,7 @@ components:
           $ref: '#/components/schemas/Username'
       required: ["username"] 
       
-    LoginResponse:
+    DoLoginResponse:
       description: Risposta al login/registrazione, contenente l'identificativo univoco dell'utente.
       type: object
       properties:
