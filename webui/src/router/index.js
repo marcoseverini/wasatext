@@ -9,7 +9,6 @@ const routes = [
     path: '/',
     name: 'Home',
     component: Home,
-    // In futuro, potremmo aggiungere 'meta: { requiresAuth: true }' ma per ora il guard copre tutto
   },
   {
     path: '/login',
@@ -24,8 +23,8 @@ const routes = [
   },
 ];
 
-const router = createRouter({
-  history: createWebHistory(),
+const router = createRouter({ // 
+  history: createWebHistory(), 
   routes,
 });
 
@@ -36,16 +35,15 @@ router.beforeEach((to, from, next) => {
   const isLoggedIn = !!localStorage.getItem('sessionToken');
   
   if (to.name !== 'Login' && !isLoggedIn) {
-    // Se l'utente non è loggato e 
-    // sta cercando di andare in qualsiasi pagina tranne 'Login',
-    // viene rimandato alla pagina di Login.
+    // Se l'utente non è loggato e sta cercando di andare a una pagina diversa da 'Login',
+    // viene rimandato alla pagina 'Login'.
     next({ name: 'Login' });
   } else if (to.name === 'Login' && isLoggedIn) {
     // Se l'utente è loggato e sta cercando di andare alla pagina 'Login',
     // viene rimandato alla pagina 'Home'.
     next({ name: 'Home' });
   } else {
-    // In tutti gli altri casi, lascia che proceda.
+    // Altrimenti, permette la navigazione alla pagina richiesta.
     next();
   }
 });

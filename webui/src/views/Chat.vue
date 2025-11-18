@@ -1,27 +1,27 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-// 1. Importa le funzioni corrette (ora include apiDeleteMessage)
+import { ref, onMounted } from 'vue'; // Importa onMounted per il ciclo di vita
+import { useRoute } from 'vue-router'; // Per il routing
 import { 
   apiGetConversation, 
   apiSendMessage,
   apiDeleteMessage
-} from '@/services/api.js';
-import ErrorMsg from '@/components/ErrorMsg.vue';
-import LoadingSpinner from '@/components/LoadingSpinner.vue';
+} from '@/services/api.js'; // Importa le funzioni API necessarie
+import ErrorMsg from '@/components/ErrorMsg.vue'; // Componente per mostrare messaggi di errore
+import LoadingSpinner from '@/components/LoadingSpinner.vue'; // Componente per mostrare uno spinner di caricamento
 
 // Variabili reattive
-const conversation = ref(null);
-const loading = ref(true);
-const errorMsg = ref('');
-const newMessageText = ref('');
-const isSending = ref(false);
+const conversation = ref(null); // La conversazione corrente
+const loading = ref(true); // Stato di caricamento
+const errorMsg = ref(''); // Messaggio di errore
+const newMessageText = ref(''); // Testo del nuovo messaggio
+const isSending = ref(false); // Stato di invio messaggio
 
-const route = useRoute();
-const convId = route.params.id;
-const loggedInUserId = localStorage.getItem('sessionToken');
+const route = useRoute(); // Ottiene l'istanza della route
+const convId = route.params.id; // Ottiene l'ID della conversazione dai parametri della route
+const loggedInUserId = localStorage.getItem('sessionToken'); // Ottiene l'ID dell'utente loggato
 
-onMounted(async () => {
+// Carica la conversazione al montaggio della pagina
+onMounted(async () => { 
   try {
     loading.value = true;
     errorMsg.value = '';
@@ -37,6 +37,7 @@ onMounted(async () => {
   }
 });
 
+// Funzione per inviare un messaggio
 const handleSendMessage = async () => {
   if (newMessageText.value.trim() === '') return;
   isSending.value = true;
@@ -52,8 +53,9 @@ const handleSendMessage = async () => {
   }
 };
 
-// 2. Funzione per cancellare il messaggio
+// Funzione per cancellare il messaggio
 const handleDeleteMessage = async (messageId) => {
+
   // Chiedi conferma
   if (!window.confirm("Sei sicuro di voler cancellare questo messaggio?")) {
     return;
@@ -151,13 +153,20 @@ const handleDeleteMessage = async (messageId) => {
 </template>
 
 <style scoped>
-/* (Gli stili sono gli stessi di prima, inclusi quelli per .delete-btn) */
+
+/* Stili specifici per la Chat.vue */  
+
+/* Layout della vista chat */
 .chat-view {
   height: calc(100vh - 100px); 
 }
+
+/* Stili per l'intestazione della chat */
 .chat-header {
   flex-shrink: 0;
 }
+
+/* Stili per l'area dei messaggi */
 .message-list {
   flex-grow: 1;
   overflow-y: auto;
@@ -165,28 +174,40 @@ const handleDeleteMessage = async (messageId) => {
   display: flex;
   flex-direction: column;
 }
+
+/* Stili per i messaggi */
 .message-wrapper {
   display: flex; 
   align-items: center;
   gap: 8px;
 }
+
+/* Allinea i messaggi inviati a destra */
 .sent-wrapper {
   justify-content: flex-end;
   flex-direction: row-reverse; 
 }
+
+/* Stili per il pulsante di cancellazione del messaggio */
 .delete-btn {
   border: none;
   opacity: 0; 
   transition: opacity 0.2s ease;
   padding: 4px;
 }
+
+/* Mostra il pulsante di cancellazione al passaggio del mouse */
 .message-wrapper:hover .delete-btn {
   opacity: 1;
 }
+
+/* Stili per l'icona del cestino */
 .delete-btn svg {
   width: 16px;
   height: 16px;
 }
+
+/* Stili per le bolle dei messaggi */
 .message-bubble {
   background-color: #f1f0f0; 
   border-radius: 12px;
@@ -196,25 +217,34 @@ const handleDeleteMessage = async (messageId) => {
   align-self: flex-start;
   word-wrap: break-word;
 }
+
+/* Stili per le bolle dei messaggi inviati */
 .message-bubble.sent {
   background-color: #dcf8c6; 
   align-self: flex-end; 
 }
+
+/* Stili per il contenuto del messaggio */
 .message-sender {
   font-size: 0.8rem;
   font-weight: bold;
   color: #075E54;
   margin-bottom: 4px;
 }
+
+/* Stili per il testo del messaggio */
 .message-timestamp {
   font-size: 0.75rem;
   color: #999;
   text-align: right;
   margin-top: 5px;
 }
+
+/* Stili per l'area di input del messaggio */
 .message-input-area {
   padding: 1rem;
   border-top: 1px solid #eee;
   flex-shrink: 0;
 }
+
 </style>

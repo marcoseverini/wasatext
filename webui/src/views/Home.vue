@@ -1,20 +1,20 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { apiGetMyConversations } from '@/services/api.js';
-import ErrorMsg from '@/components/ErrorMsg.vue';
-import LoadingSpinner from '@/components/LoadingSpinner.vue';
-import SearchModal from '@/components/SearchModal.vue'; 
-import CreateGroupModal from '@/components/CreateGroupModal.vue';
+import { ref, onMounted } from 'vue'; // Importa onMounted per il ciclo di vita
+import { useRouter } from 'vue-router'; // Per il routing
+import { apiGetMyConversations } from '@/services/api.js'; // Importa la funzione API per ottenere le conversazioni
+import ErrorMsg from '@/components/ErrorMsg.vue'; // Componente per mostrare messaggi di errore
+import LoadingSpinner from '@/components/LoadingSpinner.vue'; // Componente per mostrare uno spinner di caricamento
+import SearchModal from '@/components/SearchModal.vue'; // Componente per il modale di ricerca utenti
+import CreateGroupModal from '@/components/CreateGroupModal.vue'; // Componente per il modale di creazione gruppo
 
 // Definiamo le variabili reattive
-const conversations = ref([]);
-const loading = ref(true);
-const errorMsg = ref('');
-const router = useRouter();
-const isSearchModalVisible = ref(false);
+const conversations = ref([]); // Lista delle conversazioni
+const loading = ref(true); // Stato di caricamento
+const errorMsg = ref(''); // Messaggio di errore
+const router = useRouter(); // Ottiene l'istanza del router
+const isSearchModalVisible = ref(false); // Variabile per il modale di ricerca utenti
 
-// Aggiungi la variabile per il nuovo modale
+// Aggiunge la variabile per il nuovo modale
 const isCreateGroupModalVisible = ref(false);
 
 // Funzione per caricare le conversazioni
@@ -38,11 +38,11 @@ const goToConversation = (convId) => {
 
 // Funzione da chiamare quando il modale di ricerca ha creato una chat
 const onChatCreated = (newConvId) => {
-  isSearchModalVisible.value = false; // Chiudi il modale
+  isSearchModalVisible.value = false; // Chiude il modale
   router.push(`/conversations/${newConvId}`); // Naviga alla nuova chat
 };
 
-// Aggiungi la funzione per il modale del gruppo
+// Aggiunge la funzione per il modale del gruppo
 const onGroupCreated = (newGroupId) => {
   isCreateGroupModalVisible.value = false; // Chiudi il modale
   router.push(`/conversations/${newGroupId}`); // Naviga alla nuova chat
@@ -64,7 +64,7 @@ onMounted(() => {
           <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#search" /></svg>
           Cerca Utenti
         </button>
-        <!-- 5. Aggiorna il @click per aprire il modale -->
+        <!-- Pulsante per aprire il modale di creazione gruppo -->
         <button type="button" class="btn btn-sm btn-outline-primary" @click="isCreateGroupModalVisible = true">
           <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#users" /></svg>
           Crea Gruppo
@@ -115,14 +115,14 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Modale Ricerca Utenti (invariato) -->
+    <!-- Modale Ricerca Utenti -->
     <SearchModal 
       :show="isSearchModalVisible" 
       @close="isSearchModalVisible = false"
       @chat-created="onChatCreated"
     />
 
-    <!-- 6. Aggiungi il nuovo modale per creare i gruppi -->
+    <!-- Aggiunge il nuovo modale per creare i gruppi -->
     <CreateGroupModal
       :show="isCreateGroupModalVisible"
       @close="isCreateGroupModalVisible = false"
@@ -131,15 +131,19 @@ onMounted(() => {
   </div>
 </template>
 
-<style>
-/* (stili invariati) */
-.list-group-item-action {
+<style> /* Stili specifici per la Home.vue */
+
+/* Stile per gli elementi della lista delle conversazioni */
+.list-group-item-action { 
   align-items: center;
 }
+
+/* Stile per il testo che potrebbe essere troppo lungo */
 .list-group-item-action .mb-0 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 40vw; 
 }
+
 </style>

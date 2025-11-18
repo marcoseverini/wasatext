@@ -1,26 +1,30 @@
 <script setup>
 
-import { computed } from 'vue';
-import { RouterLink, RouterView, useRoute } from 'vue-router';
-import { apiLogout } from '@/services/api.js';
+import { computed } from 'vue'; // Importa la funzione computed di Vue per le proprietà calcolate
+import { RouterLink, RouterView, useRoute } from 'vue-router'; // Importa componenti e funzioni di routing
+import { apiLogout } from '@/services/api.js'; // Importa la funzione per il logout dall'API
 
-// Ottiene l'oggetto 'route' corrente
+// Ottiene l'oggetto route corrente
 const route = useRoute();
 
-// Crea una proprietà reattiva che è 'true' se siamo sulla pagina di Login
+// Determina se la pagina corrente è la pagina di Login
 const isLoginPage = computed(() => route.name === 'Login');
 
+// Funzione per gestire il logout
 const handleLogout = () => {
   apiLogout();
 };
 
 </script>
 
-<template>
-  <!-- Layout visualizzato se non si è sulla pagina di Login --> 
-  <template v-if="!isLoginPage">
-    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
-      <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#/">WASAText</a>
+<template> 
+
+  <!-- Layout principale, visibile solo se non siamo sulla pagina di Login -->
+
+  <template v-if="!isLoginPage"> <!-- Controlla che non siamo sulla pagina di Login -->
+
+    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow"> <!-- Barra di navigazione superiore -->
+      <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#/">WASAText</a> <!-- Logo e nome dell'app -->
       
       <!-- Pulsante Logout -->
       <div class="navbar-nav">
@@ -31,12 +35,14 @@ const handleLogout = () => {
           </a>
         </div>
       </div>
-      
+
+      <!-- Pulsante per nascondere la sidebar -->
       <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon" />
+        <span class="navbar-toggler-icon"></span>
       </button>
     </header>
 
+    <!-- Contenuto principale con sidebar e area di visualizzazione -->
     <div class="container-fluid">
       <div class="row">
         <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
@@ -45,9 +51,9 @@ const handleLogout = () => {
               <span>Conversazioni</span>
             </h6>
             <ul class="nav flex-column">
-              <li class="nav-item">
-                <RouterLink to="/" class="nav-link" active-class="active">
-                  <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#home" /></svg>
+              <li class="nav-item">  
+                <RouterLink to="/" class="nav-link" active-class="active"> <!-- Link alla Home -->
+                  <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#home" /></svg> 
                   Home
                 </RouterLink>
               </li>
@@ -56,8 +62,8 @@ const handleLogout = () => {
         </nav>
 
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-          <!-- <RouterView /> carica 'Home.vue' o 'Chat.vue' qui -->
-          <RouterView /> 
+          <!-- <RouterView /> carica i componenti delle pagine qui -->
+          <RouterView />  
         </main>
       </div>
     </div>
@@ -72,15 +78,18 @@ const handleLogout = () => {
 
 <style>
 /* Stili globali */
-.feather {
-  width: 16px;
-  height: 16px;
-  vertical-align: text-bottom;
-  margin-right: 8px;
+
+/* Stile per le icone SVG */
+.feather { 
+  width: 16px; /* Larghezza dell'icona */
+  height: 16px; /* Altezza dell'icona */
+  vertical-align: text-bottom; /* Allineamento verticale */
+  margin-right: 8px; /* Spazio a destra dell'icona */
 }
 
-.sidebar .nav-link.active {
-  color: #2470dc;
-  font-weight: 500;
+/* Stile per il link attivo nella sidebar */
+.sidebar .nav-link.active {  
+  color: #2470dc; /* Colore blu per il link attivo */
+  font-weight: 500; /* Testo in grassetto per il link attivo */
 }
 </style>
