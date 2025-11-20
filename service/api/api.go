@@ -54,7 +54,7 @@ func New(cfg Config) (Router, error) {
 
 	// Rotte HTTP
 	router.POST("/session", rt.doLogin)
-	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUsername))
+	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUserName))
 	router.PUT("/settings/photo", rt.authMiddleware(rt.setMyPhoto))
 	router.GET("/users", rt.authMiddleware(rt.searchUsers))
 	router.POST("/conversations", rt.authMiddleware(rt.startConversation))

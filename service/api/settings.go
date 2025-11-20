@@ -10,7 +10,7 @@ import (
 )
 
 // PUT /settings/username
-func (rt *_router) setMyUsername(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (rt *_router) setMyUserName(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
 	if err != nil {
@@ -18,7 +18,7 @@ func (rt *_router) setMyUsername(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	var req SetMyUsernameRequest // components/schemas/SetMyUsernameRequest
+	var req SetMyUserNameRequest // components/schemas/SetMyUserNameRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
@@ -31,7 +31,7 @@ func (rt *_router) setMyUsername(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	// Aggiorna il nome utente nel database
-	updatedUser, err := rt.db.SetMyUsername(userID, string(req.Username)) // components/schemas/User
+	updatedUser, err := rt.db.SetMyUserName(userID, string(req.Username)) // components/schemas/User
 	if err != nil {
 		if errors.Is(err, database.ErrUsernameTaken) {
 			rt.sendErrorResponse(w, http.StatusConflict, "Username già in uso") // 409 Conflict

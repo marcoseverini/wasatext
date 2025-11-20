@@ -18,7 +18,7 @@ type AppDatabase interface {
 	GetUserByID(userID string) (User, error)
 	GetUserByName(username string) (User, error)
 	CreateUser(username string) (User, error)
-	SetMyUsername(userID string, newUsername string) (User, error)
+	SetMyUserName(userID string, newUsername string) (User, error)
 	SetMyPhoto(userID string, photoURL string) (User, error)
 	SearchUsers(username string) ([]User, error)
 	CheckUserExists(userID string) (bool, error)

@@ -7,7 +7,7 @@ import (
 	"github.com/mattn/go-sqlite3" // SQLite
 )
 
-func (db *appdbimpl) SetMyUsername(userID string, newUsername string) (User, error) {
+func (db *appdbimpl) SetMyUserName(userID string, newUsername string) (User, error) {
 	// Prende l'ID utente dell'utente che vuole cambiare nome e il nuovo nome desiderato
 	// Se l'utente non esiste, restituisce un errore
 	// Se il nuovo nome è già in uso, restituisce un errore

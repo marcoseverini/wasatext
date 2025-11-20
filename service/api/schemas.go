@@ -121,7 +121,7 @@ type DoLoginResponse struct { // components/schemas/DoLoginResponse
 	Identifier UserID `json:"identifier"`
 }
 
-type SetMyUsernameRequest struct { // components/schemas/SetMyUsernameRequest
+type SetMyUserNameRequest struct { // components/schemas/SetMyUserNameRequest
 	Username Username `json:"username"`
 }
 

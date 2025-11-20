@@ -60,14 +60,14 @@ paths:
       tags: ["settings"] 
       summary: Set my username
       description: Aggiorna il nome utente dell'utente autenticato.
-      operationId: setMyUsername
+      operationId: setMyUserName
       requestBody:
         description: Il nuovo username desiderato.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SetMyUsernameRequest'
+              $ref: '#/components/schemas/setMyUserNameRequest'
       responses:
         '200':
           description: Username aggiornato con successo.
@@ -802,7 +802,7 @@ components:
           $ref: '#/components/schemas/UserID'
       required: ["identifier"]
       
-    SetMyUsernameRequest:
+    SetMyUserNameRequest:
       description: Dati inviati per aggiornare il nome utente.
       type: object
       properties:
