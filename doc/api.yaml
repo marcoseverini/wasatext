@@ -67,7 +67,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/setMyUserNameRequest'
+              $ref: '#/components/schemas/SetMyUserNameRequest'
       responses:
         '200':
           description: Username aggiornato con successo.
