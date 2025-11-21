@@ -23,12 +23,10 @@ const handleLogout = () => {
 
   <template v-if="!isLoginPage"> <!-- Controlla che non siamo sulla pagina di Login -->
 
-    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow"> <!-- Barra di navigazione superiore -->
-      <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#/">WASAText</a> <!-- Logo e nome dell'app -->
+    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+      <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#/">WASAText</a>
       
-      <!-- Pulsante Logout -->
-      <div class="navbar-nav">
-        <div class="nav-item text-nowrap">
+      <div class="navbar-nav ms-auto"> <div class="nav-item text-nowrap">
           <a class="nav-link px-3" href="#" @click.prevent="handleLogout">
             Logout
             <svg class="feather" style="width: 24px; height: 24px; vertical-align: middle; margin-left: 5px;"><use href="/feather-sprite-v4.29.0.svg#log-out" /></svg>
@@ -36,10 +34,6 @@ const handleLogout = () => {
         </div>
       </div>
 
-      <!-- Pulsante per nascondere la sidebar -->
-      <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
     </header>
 
     <!-- Contenuto principale con sidebar e area di visualizzazione -->
