@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'; 
-import { useRoute } from 'vue-router'; 
+import { useRoute, useRouter } from 'vue-router'; 
 import { 
   apiGetConversation, 
   apiSendMessage,
@@ -10,8 +10,7 @@ import {
 } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue'; 
 import LoadingSpinner from '@/components/LoadingSpinner.vue'; 
-import GroupInfoModal from '@/components/GroupInfoModal.vue'; // <--- IMPORTA QUESTO
-import { useRouter } from 'vue-router'; // Assicurati che ci sia
+import GroupInfoModal from '@/components/GroupInfoModal.vue'; 
 
 const conversation = ref(null); 
 const loading = ref(true); 
@@ -19,7 +18,7 @@ const errorMsg = ref('');
 const newMessageText = ref(''); 
 const isSending = ref(false); 
 const router = useRouter();
-const showGroupInfo = ref(false); // <--- VARIABILE DI STATO PER IL MODALE
+const showGroupInfo = ref(false); 
 
 const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 const activeReactionMenuId = ref(null);
@@ -28,7 +27,7 @@ const route = useRoute();
 const convId = route.params.id; 
 const loggedInUserId = localStorage.getItem('sessionToken'); 
 
-// Funzione per ricaricare la conversazione (usata quando aggiungiamo membri o cambiamo nome)
+// Funzione per ricaricare la conversazione
 const refreshConversation = async () => {
   try {
     const data = await apiGetConversation(convId);
@@ -42,7 +41,7 @@ const refreshConversation = async () => {
 // Funzione chiamata quando si abbandona il gruppo
 const onLeftGroup = () => {
   showGroupInfo.value = false;
-  router.push('/'); // Torna alla Home
+  router.push('/'); 
 };
 
 onMounted(async () => { 
@@ -136,12 +135,18 @@ const handleRemoveReaction = async (msgId, reaction) => {
 
     <div v-if="!loading && !errorMsg && conversation" class="d-flex flex-column h-100">
       
-      <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header">
-        <img
-          :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
-          alt="foto" width="40" height="40" class="rounded-circle me-3"
-        >
-        <h1 class="h4 mb-0">{{ conversation.name }}</h1>
+      <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header justify-content-between">
+        <div class="d-flex align-items-center">
+          <img
+            :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
+            alt="foto" width="40" height="40" class="rounded-circle me-3"
+          >
+          <h1 class="h4 mb-0">{{ conversation.name }}</h1>
+        </div>
+
+        <button v-if="conversation.isGroup" class="btn btn-outline-secondary btn-sm" @click="showGroupInfo = true">
+          <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#info" /></svg>
+        </button>
       </div>
 
       <div class="message-list" @click="activeReactionMenuId = null"> 
@@ -183,7 +188,6 @@ const handleRemoveReaction = async (msgId, reaction) => {
           </div>
 
           <div class="actions-group d-flex gap-1">
-            
             <button 
               v-if="msg.sender.id === loggedInUserId"
               class="btn btn-sm btn-outline-danger action-btn"
@@ -211,7 +215,6 @@ const handleRemoveReaction = async (msgId, reaction) => {
                 </span>
               </div>
             </div>
-
           </div>
 
         </div>
@@ -234,30 +237,16 @@ const handleRemoveReaction = async (msgId, reaction) => {
         </form>
       </div>
     </div>
+
+    <GroupInfoModal 
+      v-if="showGroupInfo"
+      :show="showGroupInfo"
+      :conversation="conversation"
+      @close="showGroupInfo = false"
+      @refresh="refreshConversation"
+      @left-group="onLeftGroup"
+    />
   </div>
-
-  <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header justify-content-between"> <div class="d-flex align-items-center">
-    <img
-      :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
-      alt="foto" width="40" height="40" class="rounded-circle me-3"
-    >
-    <h1 class="h4 mb-0">{{ conversation.name }}</h1>
-  </div>
-
-  <button v-if="conversation.isGroup" class="btn btn-outline-secondary btn-sm" @click="showGroupInfo = true">
-    <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#info" /></svg>
-  </button>
-</div>
-
-<GroupInfoModal 
-  v-if="showGroupInfo"
-  :show="showGroupInfo"
-  :conversation="conversation"
-  @close="showGroupInfo = false"
-  @refresh="refreshConversation"
-  @left-group="onLeftGroup"
-/>
-
 </template>
 
 <style scoped>
@@ -280,24 +269,14 @@ const handleRemoveReaction = async (msgId, reaction) => {
 .message-wrapper {
   display: flex; 
   align-items: flex-end; 
-  /* Usiamo gap per separare bolla e bottoni indipendentemente dalla direzione */
   gap: 8px; 
   margin-bottom: 10px;
 }
 
-/* --- LOGICA DI ALLINEAMENTO --- */
-
 /* Messaggi INVIATI (Miei) */
 .sent-wrapper {
-  /* row-reverse fa due cose magiche qui:
-     1. Inverte l'ordine visivo: [Bottoni] [Bolla] (i bottoni vanno a sinistra della bolla)
-     2. Inverte l'asse principale: "Start" diventa Destra. Quindi si allineano a destra.
-  */
   flex-direction: row-reverse;
 }
-/* Messaggi RICEVUTI (Altri) */
-/* Di default è 'row', quindi: [Bolla] [Bottoni]. Start è Sinistra. Perfetto così. */
-
 
 /* Gruppo bottoni */
 .actions-group {
@@ -321,20 +300,15 @@ const handleRemoveReaction = async (msgId, reaction) => {
 .action-btn svg {
   width: 16px;
   height: 16px;
-  /* --- FIX CENTRAGGIO --- */
-  margin: 0 !important;       /* Rimuove il margine destro ereditato da App.vue */
-  vertical-align: middle;     /* Assicura l'allineamento verticale preciso */
-  /* ---------------------- */
+  margin: 0 !important;       
+  vertical-align: middle;     
 }
 
 /* MENU EMOJI POPUP */
 .emoji-picker {
   position: absolute;
   top: 35px;
-  
-  /* DEFAULT: Allineato a SINISTRA (Va bene per i messaggi ricevuti/altri) */
   left: 0; 
-  
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -345,12 +319,10 @@ const handleRemoveReaction = async (msgId, reaction) => {
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-/* --- NUOVA REGOLA: OVERRIDE PER MESSAGGI INVIATI --- */
-/* Se il menu è dentro un messaggio inviato (.sent-wrapper),
-   annulliamo 'left' e usiamo 'right' per farlo crescere verso sinistra/centro. */
+/* OVERRIDE PER MESSAGGI INVIATI */
 .sent-wrapper .emoji-picker {
-  left: auto;  /* Disabilita il left: 0 di default */
-  right: 0;    /* Allinea il bordo destro del menu al bordo destro del bottone */
+  left: auto;  
+  right: 0;    
 }
 
 .emoji-option {
