@@ -200,7 +200,7 @@ func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoj
 	var reaction Reaction // components/schemas/Reaction
 
 	// Controlla che l'emoji sia valida (esempio base)
-	if len(emoji) == 0 || len(emoji) > 4 { // Emoji possono essere 4 byte
+	if len(emoji) == 0 || len(emoji) > 8 { // Emoji possono essere 4 byte
 		return reaction, fmt.Errorf("emoji non valida: %w", ErrBadRequest)
 	}
 
