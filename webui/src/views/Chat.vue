@@ -277,6 +277,10 @@ const handleRemoveReaction = async (msgId, reaction) => {
 .action-btn svg {
   width: 16px;
   height: 16px;
+  /* --- FIX CENTRAGGIO --- */
+  margin: 0 !important;       /* Rimuove il margine destro ereditato da App.vue */
+  vertical-align: middle;     /* Assicura l'allineamento verticale preciso */
+  /* ---------------------- */
 }
 
 /* MENU EMOJI POPUP */
