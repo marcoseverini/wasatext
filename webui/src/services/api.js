@@ -65,8 +65,10 @@ export async function apiLogin(username) {
     
     if (response.identifier) {
         localStorage.setItem('sessionToken', response.identifier);
-        // Salviamo anche l'username per comodità nel frontend
-        localStorage.setItem('username', username);
+        
+        // --- QUESTA RIGA È FONDAMENTALE ---
+        localStorage.setItem('username', username); 
+        // ----------------------------------
     }
     return response;
 }

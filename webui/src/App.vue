@@ -1,13 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'; 
+import { ref, computed, watch } from 'vue'; // <--- Aggiungi 'watch' qui
 import { RouterLink, RouterView, useRoute } from 'vue-router'; 
 import { apiLogout } from '@/services/api.js'; 
-import ProfileModal from '@/components/ProfileModal.vue'; // <--- IMPORTA IL MODALE
+import ProfileModal from '@/components/ProfileModal.vue'; 
 
 const route = useRoute();
 const isLoginPage = computed(() => route.name === 'Login');
 
-// Stato per il modale profilo
 const showProfileModal = ref(false);
 const currentUsername = ref(localStorage.getItem('username') || 'Utente');
 
@@ -15,10 +14,22 @@ const handleLogout = () => {
   apiLogout();
 };
 
-// Aggiorna il nome visualizzato se l'utente lo cambia
 const onProfileUpdated = (newName) => {
   currentUsername.value = newName;
 };
+
+// --- FIX DEL NOME "UTENTE" ---
+// Osserviamo la rotta: ogni volta che l'utente cambia pagina (es. da Login a Home),
+// rileggiamo il nome dal localStorage per essere sicuri di avere quello aggiornato.
+watch(
+  () => route.name,
+  () => {
+    const savedName = localStorage.getItem('username');
+    if (savedName) {
+      currentUsername.value = savedName;
+    }
+  }
+);
 </script>
 
 <template> 
