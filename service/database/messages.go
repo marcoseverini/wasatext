@@ -194,13 +194,13 @@ func (db *appdbimpl) ForwardMessage(requestingUserID string, targetConvId string
 	return forwardedMessage, nil
 }
 
-// Aggiunge una reazione a un messaggio.
+// Aggiunge o Aggiorna una reazione a un messaggio (Max 1 per utente)
 func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error) {
 
-	var reaction Reaction // components/schemas/Reaction
+	var reaction Reaction
 
-	// Controlla che l'emoji sia valida (esempio base)
-	if len(emoji) == 0 || len(emoji) > 8 { // Emoji possono essere 4 byte
+	// Validazione lunghezza (quella che abbiamo corretto a 8)
+	if len(emoji) == 0 || len(emoji) > 8 {
 		return reaction, fmt.Errorf("emoji non valida: %w", ErrBadRequest)
 	}
 
@@ -212,9 +212,8 @@ func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoj
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	// Annulla se qualcosa va storto
 
-	// Controlla che l'utente sia membro della conversazione del messaggio
+	// 1. Check Membership (Invariato)
 	var isMember bool
 	err = tx.QueryRow(`
         SELECT EXISTS (
@@ -233,28 +232,30 @@ func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoj
 		return reaction, ErrForbidden
 	}
 
-	// Inserisce o Sostituisce
-	// Cercha prima se esiste già una reazione identica
+	// 2. NUOVA LOGICA: "Upsert" (Update or Insert)
+	// Cerchiamo se l'utente ha GIÀ una reazione (di qualsiasi tipo) su questo messaggio
 	var existingId string
-	err = tx.QueryRow(`SELECT id FROM reactions WHERE messageId = ? AND userId = ? AND emoji = ?`,
-		messageID, requestingUserID, emoji).Scan(&existingId)
+	err = tx.QueryRow(`SELECT id FROM reactions WHERE messageId = ? AND userId = ?`,
+		messageID, requestingUserID).Scan(&existingId)
 
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		// Non esiste, crea
+	if errors.Is(err, sql.ErrNoRows) {
+		// CASO A: Non esiste nessuna reazione -> CREIAMO NUOVA
 		reaction.ID = "react-" + uuid.New().String()
 		_, err = tx.Exec(`INSERT INTO reactions (id, messageId, userId, emoji) VALUES (?, ?, ?, ?)`,
 			reaction.ID, messageID, requestingUserID, emoji)
-	case err == nil:
-		// Esiste già, usa l'ID esistente
+		if err != nil {
+			return reaction, fmt.Errorf("error inserting reaction: %w", err)
+		}
+	} else if err == nil {
+		// CASO B: Esiste già una reazione -> AGGIORNIAMO L'EMOJI (Sostituzione)
 		reaction.ID = existingId
-	default:
-		// Errore diverso
+		_, err = tx.Exec(`UPDATE reactions SET emoji = ? WHERE id = ?`, emoji, existingId)
+		if err != nil {
+			return reaction, fmt.Errorf("error updating reaction: %w", err)
+		}
+	} else {
+		// Errore generico database
 		return reaction, fmt.Errorf("error checking existing reaction: %w", err)
-	}
-
-	if err != nil {
-		return reaction, fmt.Errorf("error upserting reaction: %w", err)
 	}
 
 	// Committa

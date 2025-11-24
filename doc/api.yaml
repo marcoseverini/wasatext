@@ -326,7 +326,10 @@ paths:
     post:
       tags: ["messages"]
       summary: React to a message
-      description: Aggiunge una reazione (emoji) a un messaggio specificato, a nome dell'utente autenticato. Se l'utente ha già reagito con la stessa emoji, non succede nulla.
+      description: >-
+        Aggiunge o aggiorna una reazione (emoji) a un messaggio specificato.
+        Ogni utente può avere al massimo una reazione per messaggio.
+        Se l'utente ha già reagito (anche con un'emoji diversa), la vecchia reazione verrà sostituita dalla nuova.
       operationId: commentMessage
       parameters:
         - $ref: '#/components/parameters/MsgID'

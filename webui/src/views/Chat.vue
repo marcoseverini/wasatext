@@ -90,10 +90,14 @@ const handleAddReaction = async (msgId, emoji) => {
     const msg = conversation.value.messages.find(m => m.id === msgId);
     if (msg) {
       if (!msg.reactions) msg.reactions = [];
-      // Se l'utente aveva già reagito con la stessa emoji, il backend 
-      // potrebbe ritornare la stessa ID o aggiornarla. 
-      // Per semplicità, rimuoviamo vecchie reazioni uguali di questo utente (se presenti) e aggiungiamo la nuova
-      msg.reactions = msg.reactions.filter(r => !(r.user.id === loggedInUserId && r.emoji === emoji));
+      
+      // --- MODIFICA QUI ---
+      // Prima: Rimuovevamo solo se l'emoji era identica.
+      // ORA: Rimuoviamo QUALSIASI reazione precedente fatta da ME (loggedInUserId)
+      // perché il backend l'ha sovrascritta.
+      msg.reactions = msg.reactions.filter(r => r.user.id !== loggedInUserId);
+      // --------------------
+
       msg.reactions.push(reaction);
     }
   } catch (err) {
