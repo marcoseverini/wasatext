@@ -1,101 +1,165 @@
-import axios from "axios";
+// Leggiamo l'URL del backend dal file .env (Vite lo inietta qui)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Creazione dell'istanza Axios
-const api = axios.create({
-	baseURL: __API_URL__, // Questa variabile viene iniettata da Vite/Go in fase di build
-	timeout: 1000 * 5, // 5 secondi di timeout
-});
+/*
+ * Una funzione "wrapper" per 'fetch' che gestisce la logica del token
+ * e imposta gli header corretti per noi.
+ */
+async function apiFetch(endpoint, options = {}) {
+    // Prepara gli header
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
 
-// Interceptor per aggiungere l'Authorization header a ogni richiesta
-// (prende il token salvato nel localStorage)
-api.interceptors.request.use(
-	(config) => {
-		const token = localStorage.getItem("sessionToken");
-		if (token) {
-			config.headers["Authorization"] = `Bearer ${token}`;
-		}
-		return config;
-	},
-	(error) => {
-		return Promise.reject(error);
-	}
-);
+    // Leggi il token salvato dal localStorage
+    const token = localStorage.getItem('sessionToken');
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
 
-// --- FUNZIONI API ---
+    // Costruisci la richiesta
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers: headers,
+    });
 
-// Login
-export const apiLogin = async (username) => {
-	// POST /session
-	const response = await api.post("/session", { username });
-	// Salva l'ID utente (che funge da token)
-	localStorage.setItem("sessionToken", response.data.identifier);
-	localStorage.setItem("username", username);
-	return response.data;
-};
+    // Se la risposta è 401 (token non valido/scaduto),
+    // cancella il token e ricarica la pagina (che forzerà il login)
+    if (response.status === 401) {
+        localStorage.removeItem('sessionToken');
+        window.location.reload();
+        throw new Error("Sessione scaduta. Effettua nuovamente il login.");
+    }
 
-// Logout (semplicemente rimuove il token locale)
-export const apiLogout = () => {
-	localStorage.removeItem("sessionToken");
-	localStorage.removeItem("username");
-	window.location.href = "/"; // Ricarica la pagina per tornare al login
-};
+    // Se c'è un errore (status non 2xx), lancia un'eccezione
+    if (!response.ok) {
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            errorData = {};
+        }
+        throw new Error(errorData.message || 'Si è verificato un errore: ' + response.statusText);
+    }
 
-// Ottieni le mie conversazioni
-export const apiGetMyConversations = async () => {
-	// GET /conversations
-	const response = await api.get("/conversations");
-	return response.data;
-};
+    // Se è 204 No Content, ritorna null
+    if (response.status === 204) {
+        return null;
+    }
+    
+    // Altrimenti ritorna il JSON
+    return response.json();
+}
 
-// Ottieni una singola conversazione e i suoi messaggi
-export const apiGetConversation = async (convId) => {
-	// GET /conversations/{convId}
-	const response = await api.get(`/conversations/${convId}`);
-	return response.data;
-};
+// --- Definizioni delle nostre funzioni API ---
 
-// Cerca utenti
-export const apiSearchUsers = async (query) => {
-	// GET /users?username=...
-	const response = await api.get("/users", {
-		params: { username: query },
-	});
-	return response.data;
-};
+/**
+ * Esegue il login e salva il token
+ */
+export async function apiLogin(username) {
+    const response = await apiFetch('/session', {
+        method: 'POST',
+        body: JSON.stringify({ username: username }), 
+    });
+    
+    if (response.identifier) {
+        localStorage.setItem('sessionToken', response.identifier);
+        // Salviamo anche l'username per comodità nel frontend
+        localStorage.setItem('username', username);
+    }
+    return response;
+}
 
-// Inizia una nuova chat
-export const apiStartConversation = async (recipientId) => {
-	// POST /conversations
-	const response = await api.post("/conversations", {
-		userId: recipientId, // NOTA: Nello YAML è 'userId' dentro UserIdRequest
-	});
-	return response.data;
-};
+/**
+ * Ottiene la lista delle conversazioni
+ */
+export async function apiGetMyConversations() {
+    return apiFetch('/conversations'); 
+}
 
-// Invia Messaggio
-export const apiSendMessage = async (convId, text) => {
-	// POST /conversations/{convId}/messages
-	const response = await api.post(`/conversations/${convId}/messages`, {
-		text: text,
-	});
-	return response.data;
-};
+/**
+ * Funzione di Logout
+ */
+export function apiLogout() {
+    localStorage.removeItem('sessionToken');
+    localStorage.removeItem('username');
+    window.location.href = "/";
+}
 
-// Cancella Messaggio
-export const apiDeleteMessage = async (msgId) => {
-	// DELETE /messages/{msgId}
-	await api.delete(`/messages/${msgId}`);
-};
+/**
+ * Cerca utenti in base al nome
+ */
+export async function apiSearchUsers(username) {
+  return apiFetch(`/users?username=${encodeURIComponent(username)}`);
+}
 
-// Aggiungi Reazione
-export const apiAddReaction = async (msgId, emoji) => {
-	// POST /messages/{msgId}/reactions
-	const response = await api.post(`/messages/${msgId}/reactions`, { emoji });
-	return response.data;
-};
+/**
+ * Inizia una nuova conversazione 1-a-1
+ */
+export async function apiStartConversation(userId) {
+  return apiFetch('/conversations', {
+    method: 'POST',
+    body: JSON.stringify({ userId: userId }),
+  });
+}
 
-// Rimuovi Reazione
-export const apiRemoveReaction = async (msgId, reactionId) => {
-	// DELETE /messages/{msgId}/reactions/{reactionId}
-	await api.delete(`/messages/${msgId}/reactions/${reactionId}`);
-};
+/**
+ * Ottiene i dettagli completi di una singola conversazione
+ */
+export async function apiGetConversation(conversationId) {
+  return apiFetch(`/conversations/${conversationId}`);
+}
+
+/**
+ * Invia un nuovo messaggio di testo a una conversazione
+ */
+export async function apiSendMessage(conversationId, messageText) {
+  return apiFetch(`/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({
+      text: messageText
+    }),
+  });
+}
+
+/**
+ * Crea un nuovo gruppo
+ */
+export async function apiCreateGroup(groupName, memberIds) {
+  return apiFetch('/groups', {
+    method: 'POST',
+    body: JSON.stringify({
+      groupName: groupName,
+      memberIds: memberIds,
+    }),
+  });
+}
+
+/**
+ * Cancella un messaggio
+ */
+export async function apiDeleteMessage(messageId) {
+  return apiFetch(`/messages/${messageId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Aggiunge una reazione a un messaggio (CORRETTA)
+ */
+export async function apiAddReaction(msgId, emoji) {
+    return apiFetch(`/messages/${msgId}/reactions`, {
+        method: 'POST',
+        body: JSON.stringify({ emoji: emoji })
+    });
+}
+
+/**
+ * Rimuove una reazione (CORRETTA)
+ */
+export async function apiRemoveReaction(msgId, reactionId) {
+    return apiFetch(`/messages/${msgId}/reactions/${reactionId}`, {
+        method: 'DELETE'
+    });
+}
