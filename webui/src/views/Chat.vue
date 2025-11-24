@@ -17,10 +17,7 @@ const errorMsg = ref('');
 const newMessageText = ref(''); 
 const isSending = ref(false); 
 
-// Lista di emoji disponibili per la selezione rapida
 const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
-
-// Tiene traccia di quale messaggio ha il menu emoji aperto
 const activeReactionMenuId = ref(null);
 
 const route = useRoute(); 
@@ -71,7 +68,6 @@ const handleDeleteMessage = async (messageId) => {
   }
 };
 
-// Gestisce l'apertura/chiusura del menu emoji
 const toggleReactionMenu = (msgId) => {
   if (activeReactionMenuId.value === msgId) {
     activeReactionMenuId.value = null;
@@ -80,21 +76,14 @@ const toggleReactionMenu = (msgId) => {
   }
 };
 
-// Invia una reazione
 const handleAddReaction = async (msgId, emoji) => {
-  activeReactionMenuId.value = null; // Chiudi il menu
+  activeReactionMenuId.value = null; 
   try {
     const reaction = await apiAddReaction(msgId, emoji);
-    
-    // Aggiorna la UI locale
     const msg = conversation.value.messages.find(m => m.id === msgId);
     if (msg) {
       if (!msg.reactions) msg.reactions = [];
-      
-      // Rimuoviamo qualsiasi reazione precedente fatta da ME
-      // perché il backend l'ha sovrascritta (logica Max 1 per utente).
       msg.reactions = msg.reactions.filter(r => r.user.id !== loggedInUserId);
-
       msg.reactions.push(reaction);
     }
   } catch (err) {
@@ -102,14 +91,10 @@ const handleAddReaction = async (msgId, emoji) => {
   }
 };
 
-// Rimuove una reazione (se è mia)
 const handleRemoveReaction = async (msgId, reaction) => {
   if (reaction.user.id !== loggedInUserId) return;
-
   try {
     await apiRemoveReaction(msgId, reaction.id);
-    
-    // Aggiorna UI locale
     const msg = conversation.value.messages.find(m => m.id === msgId);
     if (msg && msg.reactions) {
       msg.reactions = msg.reactions.filter(r => r.id !== reaction.id);
@@ -118,7 +103,6 @@ const handleRemoveReaction = async (msgId, reaction) => {
     errorMsg.value = "Impossibile rimuovere reazione: " + err.message;
   }
 };
-
 </script>
 
 <template>
@@ -177,7 +161,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
             </div>
           </div>
 
-          <div class="actions-group d-flex gap-1 ms-2">
+          <div class="actions-group d-flex gap-1">
             
             <button 
               v-if="msg.sender.id === loggedInUserId"
@@ -234,7 +218,6 @@ const handleRemoveReaction = async (msgId, reaction) => {
 
 <style scoped>
 
-/* Layout della vista chat */
 .chat-view {
   height: calc(100vh - 100px); 
 }
@@ -252,18 +235,27 @@ const handleRemoveReaction = async (msgId, reaction) => {
 /* Wrapper dei messaggi */
 .message-wrapper {
   display: flex; 
-  align-items: flex-end; /* Allinea bolla e bottoni in basso */
-  gap: 0; /* Lo spazio è gestito da ms-2 sul gruppo azioni */
+  align-items: flex-end; 
+  /* Usiamo gap per separare bolla e bottoni indipendentemente dalla direzione */
+  gap: 8px; 
   margin-bottom: 10px;
 }
 
-/* Allinea tutto il blocco a destra, ma mantiene l'ordine HTML (Bolla -> Bottoni) */
-.sent-wrapper {
-  justify-content: flex-end;
-  /* flex-direction: row-reverse; RIMOSSO per avere i bottoni sempre a destra */
-}
+/* --- LOGICA DI ALLINEAMENTO --- */
 
-/* Gruppo bottoni (cestino + emoji) */
+/* Messaggi INVIATI (Miei) */
+.sent-wrapper {
+  /* row-reverse fa due cose magiche qui:
+     1. Inverte l'ordine visivo: [Bottoni] [Bolla] (i bottoni vanno a sinistra della bolla)
+     2. Inverte l'asse principale: "Start" diventa Destra. Quindi si allineano a destra.
+  */
+  flex-direction: row-reverse;
+}
+/* Messaggi RICEVUTI (Altri) */
+/* Di default è 'row', quindi: [Bolla] [Bottoni]. Start è Sinistra. Perfetto così. */
+
+
+/* Gruppo bottoni */
 .actions-group {
   opacity: 0; 
   transition: opacity 0.2s ease;
@@ -273,7 +265,6 @@ const handleRemoveReaction = async (msgId, reaction) => {
   opacity: 1;
 }
 
-/* Stile base per i bottoni azione (cestino/emoji) */
 .action-btn {
   display: flex !important;
   align-items: center !important;
@@ -288,10 +279,9 @@ const handleRemoveReaction = async (msgId, reaction) => {
   height: 16px;
 }
 
-/* MENU EMOJI POPUP */
 .emoji-picker {
   position: absolute;
-  top: 35px; /* Spinge verso il basso (sotto il bottone) */
+  top: 35px; 
   left: 0;
   background: white;
   border: 1px solid #ddd;
@@ -313,7 +303,6 @@ const handleRemoveReaction = async (msgId, reaction) => {
   background-color: #f0f0f0;
 }
 
-/* Bolla del Messaggio */
 .message-bubble {
   background-color: #f1f0f0; 
   border-radius: 12px;
@@ -338,7 +327,6 @@ const handleRemoveReaction = async (msgId, reaction) => {
   margin-top: 5px;
 }
 
-/* Stili per le Reazioni dentro la bolla */
 .reactions-container {
   display: flex;
   flex-wrap: wrap;
@@ -354,7 +342,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
   background-color: #e2e2e2 !important;
 }
 .reaction-pill.my-reaction {
-  background-color: #d1e7dd !important; /* Verde chiaro per le mie reazioni */
+  background-color: #d1e7dd !important; 
   border-color: #a3cfbb !important;
 }
 
