@@ -133,3 +133,16 @@ export async function apiDeleteMessage(messageId) {
     method: 'DELETE',
   });
 }
+
+// Aggiunge una reazione a un messaggio
+export const apiAddReaction = async (msgId, emoji) => {
+    // POST /messages/{msgId}/reactions
+    const response = await api.post(`/messages/${msgId}/reactions`, { emoji });
+    return response.data;
+};
+
+// Rimuove una reazione
+export const apiRemoveReaction = async (msgId, reactionId) => {
+    // DELETE /messages/{msgId}/reactions/{reactionId}
+    await api.delete(`/messages/${msgId}/reactions/${reactionId}`);
+};
