@@ -103,9 +103,9 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		var otherUser User
 		var otherPhoto sql.NullString
 		err = db.c.QueryRow(`
-			SELECT u.id, u.username, u.photoUrl FROM users u
-			JOIN conversation_members cm ON u.id = cm.userId
-			WHERE cm.conversationId = ? AND cm.userId != ?`, conversationID, requestingUserID).
+            SELECT u.id, u.username, u.photoUrl FROM users u
+            JOIN conversation_members cm ON u.id = cm.userId
+            WHERE cm.conversationId = ? AND cm.userId != ?`, conversationID, requestingUserID).
 			Scan(&otherUser.ID, &otherUser.Username, &otherPhoto)
 
 		if err == nil {
@@ -116,9 +116,9 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 
 	// Prende i membri
 	rows, err := db.c.Query(`
-		SELECT u.id, u.username, u.photoUrl FROM users u
-		JOIN conversation_members cm ON u.id = cm.userId
-		WHERE cm.conversationId = ?`, conversationID)
+        SELECT u.id, u.username, u.photoUrl FROM users u
+        JOIN conversation_members cm ON u.id = cm.userId
+        WHERE cm.conversationId = ?`, conversationID)
 	if err != nil {
 		return conversation, fmt.Errorf("could not get conversation members: %w", err)
 	}
@@ -141,12 +141,12 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 
 	// Prende i messaggi
 	msgRows, err := db.c.Query(`
-		SELECT m.id, m.content, m.contentType, m.timestamp,
-		       u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
-		FROM messages m
-		JOIN users u ON m.senderId = u.id
-		WHERE m.conversationId = ?
-		ORDER BY m.timestamp DESC`, conversationID)
+        SELECT m.id, m.content, m.contentType, m.timestamp,
+               u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
+        FROM messages m
+        JOIN users u ON m.senderId = u.id
+        WHERE m.conversationId = ?
+        ORDER BY m.timestamp DESC`, conversationID)
 	if err != nil {
 		return conversation, fmt.Errorf("could not get messages: %w", err)
 	}
@@ -154,7 +154,10 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 
 	var messages []Message
 
-	messageMap := make(map[string]*Message)
+	// --- FIX MEMORIA ---
+	// Usiamo una mappa di INDICI (int), non di puntatori.
+	// Questo evita problemi se la slice viene riallocata in memoria.
+	messageMap := make(map[string]int)
 
 	for msgRows.Next() {
 		var msg Message
@@ -164,24 +167,25 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 			return conversation, fmt.Errorf("could not scan message: %w", err)
 		}
 		msg.Sender.PhotoURL = senderPhoto.String
-		msg.Reactions = []Reaction{} // Inizializza come array vuoto
+		msg.Reactions = []Reaction{}
+
 		messages = append(messages, msg)
-		// Aggiunge un puntatore al messaggio nella mappa
-		messageMap[msg.ID] = &messages[len(messages)-1]
+		// Salviamo l'indice corrente
+		messageMap[msg.ID] = len(messages) - 1
 	}
 	if err = msgRows.Err(); err != nil {
 		return conversation, fmt.Errorf("error iterating messages: %w", err)
 	}
 	msgRows.Close()
 
-	// Prende tutte le reazioni per questa conversazione in un'unica query e le unisce ai messaggi in Go.
+	// Prende tutte le reazioni
 	reactRows, err := db.c.Query(`
-		SELECT r.id, r.messageId, r.emoji,
-			u.id as reactorId, u.username as reactorUsername, u.photoUrl as reactorPhoto
-		FROM reactions r
-		JOIN users u ON r.userId = u.id
-		WHERE r.messageId IN (SELECT id FROM messages WHERE conversationId = ?)
-	`, conversationID)
+        SELECT r.id, r.messageId, r.emoji,
+            u.id as reactorId, u.username as reactorUsername, u.photoUrl as reactorPhoto
+        FROM reactions r
+        JOIN users u ON r.userId = u.id
+        WHERE r.messageId IN (SELECT id FROM messages WHERE conversationId = ?)
+    `, conversationID)
 	if err != nil {
 		return conversation, fmt.Errorf("could not get reactions: %w", err)
 	}
@@ -198,9 +202,10 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		}
 		reaction.User.PhotoURL = reactorPhoto.String
 
-		// Aggiunge la reazione al messaggio corretto usando la mappa
-		if msgPtr, ok := messageMap[msgId]; ok {
-			msgPtr.Reactions = append(msgPtr.Reactions, reaction)
+		// --- FIX MEMORIA ---
+		// Usiamo l'indice per accedere alla slice corretta
+		if idx, ok := messageMap[msgId]; ok {
+			messages[idx].Reactions = append(messages[idx].Reactions, reaction)
 		}
 	}
 	if err = reactRows.Err(); err != nil {
