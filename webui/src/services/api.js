@@ -163,3 +163,28 @@ export async function apiRemoveReaction(msgId, reactionId) {
         method: 'DELETE'
     });
 }
+
+// Aggiorna il nome del gruppo
+export async function apiSetGroupName(convId, name) {
+    return apiFetch(`/conversations/${convId}/name`, {
+        method: 'PUT',
+        body: JSON.stringify({ name })
+    });
+}
+
+// Aggiunge un utente a un gruppo esistente
+export async function apiAddToGroup(convId, userId) {
+    // POST /conversations/{convId}/members
+    return apiFetch(`/conversations/${convId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ userId })
+    });
+}
+
+// Abbandona il gruppo
+export async function apiLeaveGroup(convId) {
+    // DELETE /conversations/{convId}/members/me
+    return apiFetch(`/conversations/${convId}/members/me`, {
+        method: 'DELETE'
+    });
+}

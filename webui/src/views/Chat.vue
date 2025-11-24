@@ -10,12 +10,16 @@ import {
 } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue'; 
 import LoadingSpinner from '@/components/LoadingSpinner.vue'; 
+import GroupInfoModal from '@/components/GroupInfoModal.vue'; // <--- IMPORTA QUESTO
+import { useRouter } from 'vue-router'; // Assicurati che ci sia
 
 const conversation = ref(null); 
 const loading = ref(true); 
 const errorMsg = ref(''); 
 const newMessageText = ref(''); 
 const isSending = ref(false); 
+const router = useRouter();
+const showGroupInfo = ref(false); // <--- VARIABILE DI STATO PER IL MODALE
 
 const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 const activeReactionMenuId = ref(null);
@@ -23,6 +27,23 @@ const activeReactionMenuId = ref(null);
 const route = useRoute(); 
 const convId = route.params.id; 
 const loggedInUserId = localStorage.getItem('sessionToken'); 
+
+// Funzione per ricaricare la conversazione (usata quando aggiungiamo membri o cambiamo nome)
+const refreshConversation = async () => {
+  try {
+    const data = await apiGetConversation(convId);
+    if (data.messages) data.messages.reverse();
+    conversation.value = data;
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+// Funzione chiamata quando si abbandona il gruppo
+const onLeftGroup = () => {
+  showGroupInfo.value = false;
+  router.push('/'); // Torna alla Home
+};
 
 onMounted(async () => { 
   try {
@@ -214,6 +235,29 @@ const handleRemoveReaction = async (msgId, reaction) => {
       </div>
     </div>
   </div>
+
+  <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header justify-content-between"> <div class="d-flex align-items-center">
+    <img
+      :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
+      alt="foto" width="40" height="40" class="rounded-circle me-3"
+    >
+    <h1 class="h4 mb-0">{{ conversation.name }}</h1>
+  </div>
+
+  <button v-if="conversation.isGroup" class="btn btn-outline-secondary btn-sm" @click="showGroupInfo = true">
+    <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#info" /></svg>
+  </button>
+</div>
+
+<GroupInfoModal 
+  v-if="showGroupInfo"
+  :show="showGroupInfo"
+  :conversation="conversation"
+  @close="showGroupInfo = false"
+  @refresh="refreshConversation"
+  @left-group="onLeftGroup"
+/>
+
 </template>
 
 <style scoped>
