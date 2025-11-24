@@ -194,11 +194,19 @@ const handleLeaveGroup = async () => {
   display: flex; justify-content: center; align-items: center;
   z-index: 2000;
 }
+
 .modal-content {
   max-width: 450px;
   max-height: 90vh;
   overflow-y: auto;
+  
+  /* --- LA CORREZIONE È QUI --- */
+  background-color: white; /* Forza lo sfondo bianco */
+  border-radius: 8px;      /* Arrotonda un po' gli angoli */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  /* -------------------------- */
 }
+
 .members-list {
   max-height: 150px;
   overflow-y: auto;
