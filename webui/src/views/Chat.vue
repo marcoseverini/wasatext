@@ -279,10 +279,14 @@ const handleRemoveReaction = async (msgId, reaction) => {
   height: 16px;
 }
 
+/* MENU EMOJI POPUP */
 .emoji-picker {
   position: absolute;
-  top: 35px; 
-  left: 0;
+  top: 35px;
+  
+  /* DEFAULT: Allineato a SINISTRA (Va bene per i messaggi ricevuti/altri) */
+  left: 0; 
+  
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -291,6 +295,14 @@ const handleRemoveReaction = async (msgId, reaction) => {
   gap: 5px;
   z-index: 1000;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* --- NUOVA REGOLA: OVERRIDE PER MESSAGGI INVIATI --- */
+/* Se il menu è dentro un messaggio inviato (.sent-wrapper),
+   annulliamo 'left' e usiamo 'right' per farlo crescere verso sinistra/centro. */
+.sent-wrapper .emoji-picker {
+  left: auto;  /* Disabilita il left: 0 di default */
+  right: 0;    /* Allinea il bordo destro del menu al bordo destro del bottone */
 }
 
 .emoji-option {
