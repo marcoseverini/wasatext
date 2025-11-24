@@ -75,18 +75,16 @@ func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID str
 }
 
 func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error) {
-	// Recupera tutti i dettagli di una conversazione.
+	var conversation Conversation
 
-	var conversation Conversation // components/schemas/Conversation
-
-	// Verifica che l'utente sia membro di questa conversazione
+	// Verifica membro
 	var isMember bool
 	err := db.c.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)", conversationID, requestingUserID).Scan(&isMember)
 	if err != nil || !isMember {
 		return conversation, fmt.Errorf("user not member or conversation not found")
 	}
 
-	// Prende i dettagli della conversazione
+	// Dettagli conversazione
 	var nullableName sql.NullString
 	var nullablePhoto sql.NullString
 	err = db.c.QueryRow("SELECT id, name, photoUrl, isGroup FROM conversations WHERE id = ?", conversationID).
@@ -94,11 +92,10 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	if err != nil {
 		return conversation, fmt.Errorf("could not get conversation details: %w", err)
 	}
-
 	conversation.Name = nullableName.String
 	conversation.PhotoURL = nullablePhoto.String
 
-	// Se non è un gruppo, il nome e la foto sono quelli dell'altro utente
+	// Nome/Foto per chat 1-1
 	if !conversation.IsGroup {
 		var otherUser User
 		var otherPhoto sql.NullString
@@ -114,7 +111,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		}
 	}
 
-	// Prende i membri
+	// Membri
 	rows, err := db.c.Query(`
         SELECT u.id, u.username, u.photoUrl FROM users u
         JOIN conversation_members cm ON u.id = cm.userId
@@ -134,14 +131,11 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		user.PhotoURL = photo.String
 		members = append(members, user)
 	}
-	if err = rows.Err(); err != nil {
-		return conversation, fmt.Errorf("error iterating members: %w", err)
-	}
 	conversation.Members = members
 
-	// Prende i messaggi
+	// --- QUERY MESSAGGI AGGIORNATA ---
 	msgRows, err := db.c.Query(`
-        SELECT m.id, m.content, m.contentType, m.timestamp,
+        SELECT m.id, m.content, m.contentType, m.timestamp, m.replyToMsgId,
                u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
         FROM messages m
         JOIN users u ON m.senderId = u.id
@@ -153,32 +147,32 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	defer msgRows.Close()
 
 	var messages []Message
-
-	// --- FIX MEMORIA ---
-	// Usiamo una mappa di INDICI (int), non di puntatori.
-	// Questo evita problemi se la slice viene riallocata in memoria.
 	messageMap := make(map[string]int)
 
 	for msgRows.Next() {
 		var msg Message
 		var senderPhoto sql.NullString
-		if err := msgRows.Scan(&msg.ID, &msg.Content, &msg.ContentType, &msg.Timestamp,
+		var replyTo sql.NullString // Variabile per gestire il NULL del database
+
+		if err := msgRows.Scan(&msg.ID, &msg.Content, &msg.ContentType, &msg.Timestamp, &replyTo,
 			&msg.Sender.ID, &msg.Sender.Username, &senderPhoto); err != nil {
 			return conversation, fmt.Errorf("could not scan message: %w", err)
 		}
 		msg.Sender.PhotoURL = senderPhoto.String
-		msg.Reactions = []Reaction{}
 
+		// Gestione replyToMsgId
+		if replyTo.Valid {
+			val := replyTo.String
+			msg.ReplyToMsgId = &val
+		}
+
+		msg.Reactions = []Reaction{}
 		messages = append(messages, msg)
-		// Salviamo l'indice corrente
 		messageMap[msg.ID] = len(messages) - 1
-	}
-	if err = msgRows.Err(); err != nil {
-		return conversation, fmt.Errorf("error iterating messages: %w", err)
 	}
 	msgRows.Close()
 
-	// Prende tutte le reazioni
+	// Reazioni
 	reactRows, err := db.c.Query(`
         SELECT r.id, r.messageId, r.emoji,
             u.id as reactorId, u.username as reactorUsername, u.photoUrl as reactorPhoto
@@ -202,18 +196,12 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		}
 		reaction.User.PhotoURL = reactorPhoto.String
 
-		// --- FIX MEMORIA ---
-		// Usiamo l'indice per accedere alla slice corretta
 		if idx, ok := messageMap[msgId]; ok {
 			messages[idx].Reactions = append(messages[idx].Reactions, reaction)
 		}
 	}
-	if err = reactRows.Err(); err != nil {
-		return conversation, fmt.Errorf("error iterating reactions: %w", err)
-	}
 
 	conversation.Messages = messages
-
 	if conversation.Members == nil {
 		conversation.Members = []User{}
 	}

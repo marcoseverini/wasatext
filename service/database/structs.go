@@ -28,13 +28,14 @@ type Conversation struct {
 
 // components/schemas/Message
 type Message struct {
-	ID          string     `json:"id"`
-	Sender      User       `json:"sender"`
-	Content     string     `json:"content"`
-	ContentType string     `json:"contentType"`
-	Timestamp   string     `json:"timestamp"`
-	Status      string     `json:"status,omitempty"`
-	Reactions   []Reaction `json:"reactions"`
+	ID           string     `json:"id"`
+	Sender       User       `json:"sender"`
+	Content      string     `json:"content"`
+	ContentType  string     `json:"contentType"`
+	Timestamp    string     `json:"timestamp"`
+	Status       string     `json:"status,omitempty"`
+	ReplyToMsgId *string    `json:"replyToMsgId,omitempty"`
+	Reactions    []Reaction `json:"reactions"`
 }
 
 // components/schemas/Reaction

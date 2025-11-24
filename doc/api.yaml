@@ -748,10 +748,15 @@ components:
           $ref: '#/components/schemas/Timestamp'
         status:
           type: string
-          description: Stato di consegna/lettura del messaggio (visibile solo per i messaggi inviati dall'utente autenticato). Non presente per i messaggi ricevuti.
+          description: Stato di consegna/lettura...
           pattern: '^.+$'
           enum: ["sent", "received", "read"]
           example: "read"
+        
+        replyToMsgId:
+          $ref: '#/components/schemas/InternalID'
+          description: "Se presente, indica l'ID del messaggio a cui questo sta rispondendo."
+
         reactions:
           type: array
           description: Lista delle reazioni associate a questo messaggio.

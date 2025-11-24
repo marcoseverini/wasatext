@@ -113,13 +113,17 @@ export async function apiGetConversation(conversationId) {
 
 /**
  * Invia un nuovo messaggio di testo a una conversazione
+ * Accetta un replyToMsgId opzionale
  */
-export async function apiSendMessage(conversationId, messageText) {
+export async function apiSendMessage(conversationId, messageText, replyToMsgId = null) {
+  const payload = { text: messageText };
+  if (replyToMsgId) {
+    payload.replyToMsgId = replyToMsgId;
+  }
+
   return apiFetch(`/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({
-      text: messageText
-    }),
+    body: JSON.stringify(payload),
   });
 }
 
