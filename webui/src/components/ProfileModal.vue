@@ -1,21 +1,26 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue'; // Aggiunto 'watch'
 import { apiSetMyUserName, apiSetMyPhoto } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const props = defineProps({
   show: Boolean,
-  username: String // Il nome attuale
+  username: String,
+  photoUrl: String // <--- NUOVA PROP
 });
 
 const emit = defineEmits(['close', 'update-profile']);
 
 const newUsername = ref(props.username);
-const newPhotoUrl = ref(''); // Per semplicità, input testuale URL
+const newPhotoUrl = ref(props.photoUrl || ''); // Inizializza con la foto attuale
 const loading = ref(false);
 const errorMsg = ref('');
 const successMsg = ref('');
+
+// Aggiorna i campi se le props cambiano mentre il modale è aperto
+watch(() => props.username, (val) => newUsername.value = val);
+watch(() => props.photoUrl, (val) => newPhotoUrl.value = val || '');
 
 const handleSave = async () => {
   loading.value = true;
@@ -23,21 +28,26 @@ const handleSave = async () => {
   successMsg.value = '';
 
   try {
+    let updatedName = props.username;
+    let updatedPhoto = props.photoUrl;
+
     // 1. Aggiorna Username se cambiato
     if (newUsername.value !== props.username) {
       await apiSetMyUserName(newUsername.value);
-      localStorage.setItem('username', newUsername.value); // Aggiorna locale
+      updatedName = newUsername.value;
     }
 
-    // 2. Aggiorna Foto se inserita
-    if (newPhotoUrl.value.trim() !== '') {
-      await apiSetMyPhoto(newPhotoUrl.value.trim());
+    // 2. Aggiorna Foto se cambiata
+    if (newPhotoUrl.value !== props.photoUrl) {
+      await apiSetMyPhoto(newPhotoUrl.value);
+      updatedPhoto = newPhotoUrl.value;
     }
 
     successMsg.value = "Profilo aggiornato con successo!";
-    emit('update-profile', newUsername.value); // Notifica al padre
     
-    // Chiudi dopo 1 secondo per far leggere il messaggio
+    // Emette entrambi i nuovi valori al padre (App.vue)
+    emit('update-profile', { username: updatedName, photoUrl: updatedPhoto });
+    
     setTimeout(() => {
       emit('close');
       successMsg.value = '';
@@ -76,11 +86,12 @@ const handleSave = async () => {
           <div class="mb-4">
             <label class="form-label fw-bold">URL Foto Profilo</label>
             <input type="url" class="form-control" v-model="newPhotoUrl" placeholder="https://...">
-            <div class="form-text">Incolla un link a un'immagine (es. da Google Images o Imgur).</div>
+            <div class="form-text">Incolla un link a un'immagine. Lascia vuoto per rimuoverla.</div>
           </div>
 
           <div v-if="newPhotoUrl" class="text-center mb-3">
-            <img :src="newPhotoUrl" class="rounded-circle border" width="64" height="64" style="object-fit: cover;" alt="Anteprima">
+            <label class="form-label small text-muted d-block">Anteprima</label>
+            <img :src="newPhotoUrl" class="rounded-circle border" width="80" height="80" style="object-fit: cover;" alt="Anteprima">
           </div>
 
           <button type="submit" class="btn btn-primary w-100" :disabled="loading">

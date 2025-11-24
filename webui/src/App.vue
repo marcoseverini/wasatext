@@ -1,33 +1,76 @@
 <script setup>
-import { ref, computed, watch } from 'vue'; // <--- Aggiungi 'watch' qui
+import { ref, computed, watch, onMounted } from 'vue'; 
 import { RouterLink, RouterView, useRoute } from 'vue-router'; 
-import { apiLogout } from '@/services/api.js'; 
+import { apiLogout, apiSearchUsers } from '@/services/api.js'; // Importa apiSearchUsers
 import ProfileModal from '@/components/ProfileModal.vue'; 
 
 const route = useRoute();
 const isLoginPage = computed(() => route.name === 'Login');
 
 const showProfileModal = ref(false);
+
+// Stato Utente
 const currentUsername = ref(localStorage.getItem('username') || 'Utente');
+const currentPhotoUrl = ref(localStorage.getItem('photoUrl') || ''); // Carica foto da localStorage
 
 const handleLogout = () => {
   apiLogout();
 };
 
-const onProfileUpdated = (newName) => {
-  currentUsername.value = newName;
+// Aggiorna stato e localStorage quando il profilo viene modificato dal modale
+const onProfileUpdated = ({ username, photoUrl }) => {
+  currentUsername.value = username;
+  currentPhotoUrl.value = photoUrl;
+  
+  localStorage.setItem('username', username);
+  if (photoUrl) {
+    localStorage.setItem('photoUrl', photoUrl);
+  } else {
+    localStorage.removeItem('photoUrl');
+  }
 };
 
-// --- FIX DEL NOME "UTENTE" ---
-// Osserviamo la rotta: ogni volta che l'utente cambia pagina (es. da Login a Home),
-// rileggiamo il nome dal localStorage per essere sicuri di avere quello aggiornato.
+// Funzione per recuperare i propri dati freschi dal server (utile se cambio PC o cancello cache)
+const fetchMyProfile = async () => {
+  const myId = localStorage.getItem('sessionToken');
+  const myName = localStorage.getItem('username');
+  
+  if (!myId || !myName) return;
+
+  try {
+    // TRUCCO: Cerco me stesso per ottenere la mia foto aggiornata dal DB
+    const data = await apiSearchUsers(myName);
+    const me = data.users.find(u => u.id === myId);
+    
+    if (me) {
+      // Se mi trovo, aggiorno lo stato locale
+      currentPhotoUrl.value = me.photoUrl || '';
+      localStorage.setItem('photoUrl', currentPhotoUrl.value);
+    }
+  } catch (e) {
+    console.error("Impossibile recuperare profilo utente", e);
+  }
+};
+
+// Al caricamento dell'App, proviamo a recuperare la foto fresca
+onMounted(() => {
+  if (!isLoginPage.value) {
+    fetchMyProfile();
+  }
+});
+
 watch(
   () => route.name,
   () => {
     const savedName = localStorage.getItem('username');
-    if (savedName) {
-      currentUsername.value = savedName;
-    }
+    if (savedName) currentUsername.value = savedName;
+    
+    // Aggiorna anche la foto al cambio rotta (es. dopo login)
+    const savedPhoto = localStorage.getItem('photoUrl');
+    if (savedPhoto) currentPhotoUrl.value = savedPhoto;
+    
+    // Se siamo loggati, rinfresca i dati dal server
+    if (route.name !== 'Login') fetchMyProfile();
   }
 );
 </script>
@@ -43,7 +86,15 @@ watch(
         <div class="nav-item text-nowrap me-3">
           <a class="nav-link px-3 d-flex align-items-center" href="#" @click.prevent="showProfileModal = true">
             <span class="me-2">{{ currentUsername }}</span>
-            <svg class="feather" style="width: 20px; height: 20px; margin: 0;"><use href="/feather-sprite-v4.29.0.svg#user" /></svg>
+            
+            <img 
+              v-if="currentPhotoUrl" 
+              :src="currentPhotoUrl" 
+              class="rounded-circle border border-secondary"
+              width="24" height="24" 
+              style="object-fit: cover;"
+            >
+            <svg v-else class="feather" style="width: 20px; height: 20px; margin: 0;"><use href="/feather-sprite-v4.29.0.svg#user" /></svg>
           </a>
         </div>
 
@@ -84,6 +135,7 @@ watch(
       v-if="showProfileModal"
       :show="showProfileModal"
       :username="currentUsername"
+      :photoUrl="currentPhotoUrl"  
       @close="showProfileModal = false"
       @update-profile="onProfileUpdated"
     />
@@ -106,7 +158,6 @@ watch(
   color: #2470dc; 
   font-weight: 500; 
 }
-/* Fix per navbar mobile */
 @media (max-width: 767.98px) {
   #sidebarMenu.collapse.show {
     position: fixed;
