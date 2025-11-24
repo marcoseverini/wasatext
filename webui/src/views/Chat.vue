@@ -69,11 +69,16 @@ const handleSendMessage = async () => {
   errorMsg.value = '';
   try {
     const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
-    const newMsg = await apiSendMessage(convId, newMessageText.value, replyId);
     
-    conversation.value.messages.push(newMsg);
+    // 1. Inviamo il messaggio
+    await apiSendMessage(convId, newMessageText.value, replyId);
+    
+    // 2. INVECE DI fare .push(newMsg), ricarichiamo la lista dal server
+    // Questo garantisce che tutti i collegamenti (reply, timestamp, foto) siano corretti
+    await refreshConversation(); 
+
     newMessageText.value = '';
-    replyingToMsg.value = null; // Resetta la reply dopo l'invio
+    replyingToMsg.value = null; 
   } catch (err) {
     errorMsg.value = err.message;
   } finally {
