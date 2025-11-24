@@ -5,8 +5,8 @@ import {
   apiGetConversation, 
   apiSendMessage,
   apiDeleteMessage,
-  apiAddReaction,    // NUOVO
-  apiRemoveReaction  // NUOVO
+  apiAddReaction,
+  apiRemoveReaction
 } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue'; 
 import LoadingSpinner from '@/components/LoadingSpinner.vue'; 
@@ -17,10 +17,10 @@ const errorMsg = ref('');
 const newMessageText = ref(''); 
 const isSending = ref(false); 
 
-// NUOVO: Lista di emoji disponibili per la selezione rapida
+// Lista di emoji disponibili per la selezione rapida
 const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
-// NUOVO: Tiene traccia di quale messaggio ha il menu emoji aperto
+// Tiene traccia di quale messaggio ha il menu emoji aperto
 const activeReactionMenuId = ref(null);
 
 const route = useRoute(); 
@@ -71,7 +71,7 @@ const handleDeleteMessage = async (messageId) => {
   }
 };
 
-// NUOVO: Gestisce l'apertura/chiusura del menu emoji
+// Gestisce l'apertura/chiusura del menu emoji
 const toggleReactionMenu = (msgId) => {
   if (activeReactionMenuId.value === msgId) {
     activeReactionMenuId.value = null;
@@ -80,7 +80,7 @@ const toggleReactionMenu = (msgId) => {
   }
 };
 
-// NUOVO: Invia una reazione
+// Invia una reazione
 const handleAddReaction = async (msgId, emoji) => {
   activeReactionMenuId.value = null; // Chiudi il menu
   try {
@@ -91,12 +91,9 @@ const handleAddReaction = async (msgId, emoji) => {
     if (msg) {
       if (!msg.reactions) msg.reactions = [];
       
-      // --- MODIFICA QUI ---
-      // Prima: Rimuovevamo solo se l'emoji era identica.
-      // ORA: Rimuoviamo QUALSIASI reazione precedente fatta da ME (loggedInUserId)
-      // perché il backend l'ha sovrascritta.
+      // Rimuoviamo qualsiasi reazione precedente fatta da ME
+      // perché il backend l'ha sovrascritta (logica Max 1 per utente).
       msg.reactions = msg.reactions.filter(r => r.user.id !== loggedInUserId);
-      // --------------------
 
       msg.reactions.push(reaction);
     }
@@ -105,9 +102,8 @@ const handleAddReaction = async (msgId, emoji) => {
   }
 };
 
-// NUOVO: Rimuove una reazione (se è mia)
+// Rimuove una reazione (se è mia)
 const handleRemoveReaction = async (msgId, reaction) => {
-  // Posso rimuovere solo le mie reazioni
   if (reaction.user.id !== loggedInUserId) return;
 
   try {
@@ -134,6 +130,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
     </div>
 
     <div v-if="!loading && !errorMsg && conversation" class="d-flex flex-column h-100">
+      
       <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header">
         <img
           :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
@@ -142,7 +139,8 @@ const handleRemoveReaction = async (msgId, reaction) => {
         <h1 class="h4 mb-0">{{ conversation.name }}</h1>
       </div>
 
-      <div class="message-list" @click="activeReactionMenuId = null"> <div v-if="conversation.messages.length === 0" class="text-center text-muted">
+      <div class="message-list" @click="activeReactionMenuId = null"> 
+        <div v-if="conversation.messages.length === 0" class="text-center text-muted">
           Questo è l'inizio della tua conversazione.
         </div>
         
@@ -152,7 +150,34 @@ const handleRemoveReaction = async (msgId, reaction) => {
           class="message-wrapper d-flex align-items-center"
           :class="{ 'sent-wrapper': msg.sender.id === loggedInUserId }"
         >
-          <div class="actions-group d-flex gap-1">
+          
+          <div class="message-bubble" :class="{ 'sent': msg.sender.id === loggedInUserId }"> 
+            <div v-if="conversation.isGroup && msg.sender.id !== loggedInUserId" class="message-sender">
+              {{ msg.sender.username }}
+            </div>
+            <div class="message-content">
+              {{ msg.content }}
+            </div>
+            
+            <div v-if="msg.reactions && msg.reactions.length > 0" class="reactions-container mt-1">
+              <span 
+                v-for="reaction in msg.reactions" 
+                :key="reaction.id"
+                class="reaction-pill badge rounded-pill bg-light text-dark border"
+                :class="{ 'my-reaction': reaction.user.id === loggedInUserId }"
+                @click.stop="handleRemoveReaction(msg.id, reaction)"
+                :title="reaction.user.username"
+              >
+                {{ reaction.emoji }}
+              </span>
+            </div>
+
+            <div class="message-timestamp">
+              {{ new Date(msg.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) }}
+            </div>
+          </div>
+
+          <div class="actions-group d-flex gap-1 ms-2">
             
             <button 
               v-if="msg.sender.id === loggedInUserId"
@@ -183,32 +208,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
             </div>
 
           </div>
-          
-          <div class="message-bubble" :class="{ 'sent': msg.sender.id === loggedInUserId }"> 
-            <div v-if="conversation.isGroup && msg.sender.id !== loggedInUserId" class="message-sender">
-              {{ msg.sender.username }}
-            </div>
-            <div class="message-content">
-              {{ msg.content }}
-            </div>
-            
-            <div v-if="msg.reactions && msg.reactions.length > 0" class="reactions-container mt-1">
-              <span 
-                v-for="reaction in msg.reactions" 
-                :key="reaction.id"
-                class="reaction-pill badge rounded-pill bg-light text-dark border"
-                :class="{ 'my-reaction': reaction.user.id === loggedInUserId }"
-                @click.stop="handleRemoveReaction(msg.id, reaction)"
-                :title="reaction.user.username"
-              >
-                {{ reaction.emoji }}
-              </span>
-            </div>
 
-            <div class="message-timestamp">
-              {{ new Date(msg.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) }}
-            </div>
-          </div>
         </div>
       </div>
       
@@ -253,12 +253,14 @@ const handleRemoveReaction = async (msgId, reaction) => {
 .message-wrapper {
   display: flex; 
   align-items: flex-end; /* Allinea bolla e bottoni in basso */
-  gap: 8px;
+  gap: 0; /* Lo spazio è gestito da ms-2 sul gruppo azioni */
   margin-bottom: 10px;
 }
+
+/* Allinea tutto il blocco a destra, ma mantiene l'ordine HTML (Bolla -> Bottoni) */
 .sent-wrapper {
   justify-content: flex-end;
-  flex-direction: row-reverse; 
+  /* flex-direction: row-reverse; RIMOSSO per avere i bottoni sempre a destra */
 }
 
 /* Gruppo bottoni (cestino + emoji) */
@@ -267,7 +269,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
   transition: opacity 0.2s ease;
 }
 .message-wrapper:hover .actions-group, 
-.active-menu .actions-group { /* Mostra se menu aperto */
+.active-menu .actions-group { 
   opacity: 1;
 }
 
@@ -289,13 +291,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
 /* MENU EMOJI POPUP */
 .emoji-picker {
   position: absolute;
-  
-  /* --- MODIFICA QUI --- */
-  /* PRIMA ERA: bottom: 35px; */
-  /* ORA (Lo spinge verso il basso): */
-  top: 35px; 
-  /* -------------------- */
-
+  top: 35px; /* Spinge verso il basso (sotto il bottone) */
   left: 0;
   background: white;
   border: 1px solid #ddd;
@@ -303,8 +299,8 @@ const handleRemoveReaction = async (msgId, reaction) => {
   padding: 5px;
   display: flex;
   gap: 5px;
-  z-index: 1000; /* Ho alzato lo z-index per sicurezza */
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Aggiunge un'ombra carina */
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .emoji-option {
