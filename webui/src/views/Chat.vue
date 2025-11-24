@@ -289,7 +289,13 @@ const handleRemoveReaction = async (msgId, reaction) => {
 /* MENU EMOJI POPUP */
 .emoji-picker {
   position: absolute;
-  bottom: 35px; /* Appare sopra il bottone */
+  
+  /* --- MODIFICA QUI --- */
+  /* PRIMA ERA: bottom: 35px; */
+  /* ORA (Lo spinge verso il basso): */
+  top: 35px; 
+  /* -------------------- */
+
   left: 0;
   background: white;
   border: 1px solid #ddd;
@@ -297,8 +303,10 @@ const handleRemoveReaction = async (msgId, reaction) => {
   padding: 5px;
   display: flex;
   gap: 5px;
-  z-index: 100;
+  z-index: 1000; /* Ho alzato lo z-index per sicurezza */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Aggiunge un'ombra carina */
 }
+
 .emoji-option {
   cursor: pointer;
   font-size: 1.2rem;
