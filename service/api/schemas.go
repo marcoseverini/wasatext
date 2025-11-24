@@ -65,8 +65,8 @@ type Emoji string // components/schemas/Emoji
 func (e Emoji) Validate() error {
 	// Prende una stringa e verifica se è un Emoji valido
 
-	if len(e) < 1 || len(e) > 4 {
-		return errors.New("Emoji non valido (deve essere tra 1 e 4 caratteri)")
+	if len(e) < 1 || len(e) > 8 {
+		return errors.New("Emoji non valido (deve essere tra 1 e 8 caratteri)")
 	}
 	return nil
 }

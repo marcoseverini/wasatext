@@ -626,7 +626,7 @@ components:
       type: string
       pattern: '^.+$'
       minLength: 1
-      maxLength: 4
+      maxLength: 8
       example: "👍"
       
     Timestamp:
