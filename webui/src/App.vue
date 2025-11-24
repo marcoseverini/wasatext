@@ -1,54 +1,62 @@
 <script setup>
+import { ref, computed } from 'vue'; 
+import { RouterLink, RouterView, useRoute } from 'vue-router'; 
+import { apiLogout } from '@/services/api.js'; 
+import ProfileModal from '@/components/ProfileModal.vue'; // <--- IMPORTA IL MODALE
 
-import { computed } from 'vue'; // Importa la funzione computed di Vue per le proprietà calcolate
-import { RouterLink, RouterView, useRoute } from 'vue-router'; // Importa componenti e funzioni di routing
-import { apiLogout } from '@/services/api.js'; // Importa la funzione per il logout dall'API
-
-// Ottiene l'oggetto route corrente
 const route = useRoute();
-
-// Determina se la pagina corrente è la pagina di Login
 const isLoginPage = computed(() => route.name === 'Login');
 
-// Funzione per gestire il logout
+// Stato per il modale profilo
+const showProfileModal = ref(false);
+const currentUsername = ref(localStorage.getItem('username') || 'Utente');
+
 const handleLogout = () => {
   apiLogout();
 };
 
+// Aggiorna il nome visualizzato se l'utente lo cambia
+const onProfileUpdated = (newName) => {
+  currentUsername.value = newName;
+};
 </script>
 
 <template> 
-
-  <!-- Layout principale, visibile solo se non siamo sulla pagina di Login -->
-
-  <template v-if="!isLoginPage"> <!-- Controlla che non siamo sulla pagina di Login -->
+  <template v-if="!isLoginPage"> 
 
     <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
       <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#/">WASAText</a>
       
-      <div class="navbar-nav ms-auto"> <div class="nav-item text-nowrap">
-          <a class="nav-link px-3" href="#" @click.prevent="handleLogout">
-            Logout
-            <svg class="feather" style="width: 24px; height: 24px; vertical-align: middle; margin-left: 5px;"><use href="/feather-sprite-v4.29.0.svg#log-out" /></svg>
+      <div class="navbar-nav ms-auto d-flex flex-row align-items-center"> 
+        
+        <div class="nav-item text-nowrap me-3">
+          <a class="nav-link px-3 d-flex align-items-center" href="#" @click.prevent="showProfileModal = true">
+            <span class="me-2">{{ currentUsername }}</span>
+            <svg class="feather" style="width: 20px; height: 20px; margin: 0;"><use href="/feather-sprite-v4.29.0.svg#user" /></svg>
           </a>
         </div>
-      </div>
 
+        <div class="nav-item text-nowrap me-3">
+          <a class="nav-link px-3" href="#" @click.prevent="handleLogout" title="Esci">
+            <svg class="feather" style="width: 20px; height: 20px; margin: 0;"><use href="/feather-sprite-v4.29.0.svg#log-out" /></svg>
+          </a>
+        </div>
+
+      </div>
     </header>
 
-    <!-- Contenuto principale con sidebar e area di visualizzazione -->
     <div class="container-fluid">
       <div class="row">
         <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
           <div class="position-sticky pt-3 sidebar-sticky">
             <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
-              <span>Conversazioni</span>
+              <span>Menu</span>
             </h6>
             <ul class="nav flex-column">
               <li class="nav-item">  
-                <RouterLink to="/" class="nav-link" active-class="active"> <!-- Link alla Home -->
-                  <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#home" /></svg> 
-                  Home
+                <RouterLink to="/" class="nav-link" active-class="active"> 
+                  <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#message-square" /></svg> 
+                  Conversazioni
                 </RouterLink>
               </li>
             </ul>
@@ -56,34 +64,49 @@ const handleLogout = () => {
         </nav>
 
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-          <!-- <RouterView /> carica i componenti delle pagine qui -->
           <RouterView />  
         </main>
       </div>
     </div>
+
+    <ProfileModal 
+      v-if="showProfileModal"
+      :show="showProfileModal"
+      :username="currentUsername"
+      @close="showProfileModal = false"
+      @update-profile="onProfileUpdated"
+    />
+
   </template>
 
-  <!-- Pagina di Login, senza layout -->
   <template v-else>
-    <!-- <RouterView /> carica 'Login.vue' qui -->
     <RouterView />
   </template>
 </template>
 
 <style>
-/* Stili globali */
-
-/* Stile per le icone SVG */
 .feather { 
-  width: 16px; /* Larghezza dell'icona */
-  height: 16px; /* Altezza dell'icona */
-  vertical-align: text-bottom; /* Allineamento verticale */
-  margin-right: 8px; /* Spazio a destra dell'icona */
+  width: 16px; 
+  height: 16px; 
+  vertical-align: text-bottom; 
+  margin-right: 8px; 
 }
-
-/* Stile per il link attivo nella sidebar */
 .sidebar .nav-link.active {  
-  color: #2470dc; /* Colore blu per il link attivo */
-  font-weight: 500; /* Testo in grassetto per il link attivo */
+  color: #2470dc; 
+  font-weight: 500; 
+}
+/* Fix per navbar mobile */
+@media (max-width: 767.98px) {
+  #sidebarMenu.collapse.show {
+    position: fixed;
+    top: 48px; 
+    left: 0; right: 0; bottom: 0;
+    z-index: 1000; 
+    background-color: #f8f9fa; 
+    padding-top: 1rem;
+    overflow-y: auto; 
+    height: calc(100vh - 48px); 
+    border-bottom: 1px solid #ddd;
+  }
 }
 </style>

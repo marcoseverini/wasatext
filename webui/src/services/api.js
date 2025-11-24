@@ -192,3 +192,21 @@ export async function apiLeaveGroup(convId) {
         method: 'DELETE'
     });
 }
+
+// Imposta il proprio username
+export async function apiSetMyUserName(username) {
+    // PUT /settings/username
+    return apiFetch('/settings/username', {
+        method: 'PUT',
+        body: JSON.stringify({ username })
+    });
+}
+
+// Imposta la propria foto profilo
+export async function apiSetMyPhoto(photoUrl) {
+    // PUT /settings/photo
+    return apiFetch('/settings/photo', {
+        method: 'PUT',
+        body: JSON.stringify({ photoUrl })
+    });
+}
