@@ -7,6 +7,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'; // Componente per 
 import SearchModal from '@/components/SearchModal.vue'; // Componente per il modale di ricerca utenti
 import CreateGroupModal from '@/components/CreateGroupModal.vue'; // Componente per il modale di creazione gruppo
 
+
 // Definiamo le variabili reattive
 const conversations = ref([]); // Lista delle conversazioni
 const loading = ref(true); // Stato di caricamento
@@ -16,6 +17,38 @@ const isSearchModalVisible = ref(false); // Variabile per il modale di ricerca u
 
 // Aggiunge la variabile per il nuovo modale
 const isCreateGroupModalVisible = ref(false);
+
+// ... altri import ...
+
+// Helper per formattare la data
+const formatTimestamp = (isoString) => {
+  if (!isoString) return '';
+  const date = new window.Date(isoString);
+  // Se è oggi, mostra solo l'ora, altrimenti data e ora
+  const today = new window.Date();
+  const isToday = date.getDate() === today.getDate() &&
+                  date.getMonth() === today.getMonth() &&
+                  date.getFullYear() === today.getFullYear();
+
+  if (isToday) {
+    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  } else {
+    return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + 
+           ' ' + date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  }
+};
+
+// Helper per l'anteprima del messaggio
+const formatSnippet = (snippet) => {
+  if (!snippet) return 'Nessun messaggio';
+  // Se è una stringa Base64 di un'immagine
+  if (snippet.startsWith('data:image')) {
+    return '📷 [Foto]';
+  }
+  return snippet;
+};
+
+// ... resto del codice (loadConversations, ecc.) ...
 
 // Funzione per caricare le conversazioni
 const loadConversations = async () => {
@@ -105,11 +138,18 @@ onMounted(() => {
           >
           
           <div class="d-flex gap-2 w-100 justify-content-between">
-            <div>
-              <h6 class="mb-0">{{ convo.name }}</h6>
-              <p class="mb-0 opacity-75">{{ convo.latestMessageSnippet || 'Nessun messaggio' }}</p>
+            <div style="overflow: hidden;"> <h6 class="mb-0">{{ convo.name }}</h6>
+              
+              <p class="mb-0 opacity-75 text-truncate">
+                {{ formatSnippet(convo.latestMessageSnippet) }}
+              </p>
+              
             </div>
-            <small class="opacity-50 text-nowrap">{{ convo.latestMessageTimestamp }}</small>
+            
+            <small class="opacity-50 text-nowrap">
+              {{ formatTimestamp(convo.latestMessageTimestamp) }}
+            </small>
+            
           </div>
         </a>
       </div>
