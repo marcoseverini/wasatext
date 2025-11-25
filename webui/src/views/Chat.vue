@@ -466,22 +466,32 @@ const getRepliedMessage = (replyId) => {
   color: #999;
 }
 
+/* Stile base per le icone di stato */
 .status-icon {
-  width: 14px;
-  height: 14px;
-  color: #999; /* Grigio di default */
+  width: 15px;
+  height: 15px;
+  color: #999;
   vertical-align: middle;
+  
+  /* --- MODIFICA FONDAMENTALE --- */
+  margin: 0 !important; /* Rimuove il margine destro di 8px ereditato da App.vue */
+  /* ----------------------------- */
 }
 
 /* Colore blu per le spunte di lettura */
 .text-primary {
-  color: #0d6efd !important; /* Blu Bootstrap */
+  color: #0d6efd !important;
 }
 
 /* Sovrapposizione stile WhatsApp */
 .overlap-icon {
-  margin-left: -11px !important; /* Sposta l'icona a sinistra sopra l'altra */
-  margin-top: -1px; /* Opzionale: aggiusta leggermente l'altezza se serve */
+  /* Ora che non c'è il margine dell'altra icona in mezzo, 
+     -8px è sufficiente per sovrapporle a metà */
+  margin-left: -8px !important; 
+  
+  /* Opzionale: sposta la seconda spunta leggermente in alto 
+     per dare l'effetto "impilato" tipico */
+  margin-top: -3px; 
 }
 
 </style>
