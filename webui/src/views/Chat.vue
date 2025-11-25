@@ -64,7 +64,7 @@ onMounted(async () => {
       data.messages.reverse(); 
     }
     conversation.value = data;
-    scrollToBottom(); // Scrolla in fondo all'apertura
+    scrollToBottom(); 
   } catch (err) {
     errorMsg.value = err.message;
   } finally {
@@ -79,13 +79,9 @@ const handleSendMessage = async () => {
   errorMsg.value = '';
   try {
     const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
-    
-    // Chiama API con type='text'
     await apiSendMessage(convId, newMessageText.value, 'text', replyId);
-    
     await refreshConversation(); 
     scrollToBottom();
-
     newMessageText.value = '';
     replyingToMsg.value = null; 
   } catch (err) {
@@ -95,7 +91,7 @@ const handleSendMessage = async () => {
   }
 };
 
-// --- INVIO FOTO (NUOVO) ---
+// --- INVIO FOTO ---
 const handlePhotoUpload = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -113,10 +109,7 @@ const handlePhotoUpload = async (event) => {
     
     try {
       const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
-      
-      // Chiama API con type='photo' e la stringa Base64 come contenuto
       await apiSendMessage(convId, base64String, 'photo', replyId);
-      
       await refreshConversation();
       scrollToBottom();
       replyingToMsg.value = null;
@@ -124,7 +117,6 @@ const handlePhotoUpload = async (event) => {
       errorMsg.value = "Errore invio foto: " + err.message;
     } finally {
       isSending.value = false;
-      // Resetta l'input file per poter ricaricare la stessa immagine se serve
       event.target.value = '';
     }
   };
@@ -207,7 +199,7 @@ const getRepliedMessage = (replyId) => {
           >
           <h1 class="h4 mb-0">{{ conversation.name }}</h1>
         </div>
-        <button v-if="conversation.isGroup" class="btn btn-outline-secondary btn-sm" @click="showGroupInfo = true">
+        <button v-if="conversation.isGroup" class="btn btn-outline-secondary btn-sm info-btn" @click="showGroupInfo = true">
           <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#info" /></svg>
         </button>
       </div>
@@ -374,12 +366,18 @@ const getRepliedMessage = (replyId) => {
 }
 .action-btn svg { width: 16px; height: 16px; margin: 0 !important; vertical-align: middle; }
 
-/* Stile per il bottone upload */
 .upload-btn {
   display: flex !important; align-items: center !important; justify-content: center !important;
   padding: 0 !important; width: 38px !important; height: 38px !important; cursor: pointer; border-radius: 4px;
 }
 .upload-btn svg { width: 20px; height: 20px; margin: 0 !important; vertical-align: middle; }
+
+/* STILE INFO BUTTON (NUOVO) */
+.info-btn {
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  padding: 0 !important; width: 30px !important; height: 30px !important; border-radius: 4px;
+}
+.info-btn svg { width: 16px; height: 16px; margin: 0 !important; vertical-align: middle; }
 
 .emoji-picker {
   position: absolute; top: 35px; left: 0;
@@ -405,14 +403,11 @@ const getRepliedMessage = (replyId) => {
 
 .message-input-area { padding: 1rem; border-top: 1px solid #eee; flex-shrink: 0; }
 
-/* STILI PER LA REPLY */
 .reply-bar { border-radius: 8px; font-size: 0.9rem; }
 .reply-preview-bubble {
   background-color: rgba(0,0,0,0.05);
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: 6px; padding: 6px 10px;
   border-left: 4px solid #2470dc;
-  font-size: 0.85rem;
-  margin-bottom: 5px;
+  font-size: 0.85rem; margin-bottom: 5px;
 }
 </style>

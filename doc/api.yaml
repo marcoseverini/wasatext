@@ -621,7 +621,7 @@ components:
       # format: url 
       pattern: '^.+$'
       minLength: 1
-      maxLength: 1000000  # 1MB
+      maxLength: 1000000
       example: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
     
     Emoji:
@@ -737,7 +737,10 @@ components:
         sender:
           $ref: '#/components/schemas/User'
         content:
-          $ref: '#/components/schemas/MessageContent'
+          type: string
+          description: Contenuto del messaggio. Se contentType='text' è il testo. Se 'photo', è la stringa Base64 o URL.
+          minLength: 1
+          maxLength: 1000000 
         contentType:
           type: string
           description: Tipo di contenuto del messaggio.
@@ -748,15 +751,13 @@ components:
           $ref: '#/components/schemas/Timestamp'
         status:
           type: string
-          description: Stato di consegna/lettura...
+          description: Stato di consegna/lettura del messaggio (visibile solo per i messaggi inviati dall'utente autenticato). Non presente per i messaggi ricevuti.
           pattern: '^.+$'
           enum: ["sent", "received", "read"]
           example: "read"
-        
         replyToMsgId:
           $ref: '#/components/schemas/InternalID'
           description: "Se presente, indica l'ID del messaggio a cui questo sta rispondendo."
-
         reactions:
           type: array
           description: Lista delle reazioni associate a questo messaggio.
@@ -918,7 +919,3 @@ components:
           minItems: 0
           maxItems: 100
       required: ["conversations"]
-
-    
-
-    
