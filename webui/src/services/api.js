@@ -235,3 +235,12 @@ export async function apiSetGroupPhoto(convId, photoUrl) {
         body: JSON.stringify({ photoUrl })
     });
 }
+
+// Inoltra un messaggio in un'altra conversazione
+export async function apiForwardMessage(targetConvId, originalMsgId) {
+    // POST /conversations/{convId}/forwarded_messages
+    return apiFetch(`/conversations/${targetConvId}/forwarded_messages`, {
+        method: 'POST',
+        body: JSON.stringify({ originalMessageId: originalMsgId })
+    });
+}
