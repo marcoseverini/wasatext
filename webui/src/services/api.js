@@ -218,3 +218,12 @@ export async function apiSetMyPhoto(photoUrl) {
         body: JSON.stringify({ photoUrl })
     });
 }
+
+// Imposta la foto del gruppo
+export async function apiSetGroupPhoto(convId, photoUrl) {
+    // PUT /conversations/{convId}/photo
+    return apiFetch(`/conversations/${convId}/photo`, {
+        method: 'PUT',
+        body: JSON.stringify({ photoUrl })
+    });
+}
