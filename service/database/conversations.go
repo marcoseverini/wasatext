@@ -84,6 +84,22 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		return conversation, fmt.Errorf("user not member or conversation not found")
 	}
 
+	// Segna come LETTI ('read') tutti i messaggi in questa conversazione
+	// che NON sono stati inviati da me (senderId != requestingUserID)
+	// e che non sono già letti.
+	_, err = db.c.Exec(`
+        UPDATE messages 
+        SET status = 'read' 
+        WHERE conversationId = ? 
+          AND senderId != ? 
+          AND status != 'read'`,
+		conversationID, requestingUserID)
+
+	if err != nil {
+		// Non blocchiamo tutto se fallisce l'aggiornamento stato, ma lo logghiamo o ignoriamo
+		// (Opzionale: fmt.Println("Errore aggiornamento stato lettura:", err))
+	}
+
 	// Dettagli conversazione
 	var nullableName sql.NullString
 	var nullablePhoto sql.NullString

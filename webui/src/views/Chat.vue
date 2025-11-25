@@ -285,8 +285,21 @@ const getRepliedMessage = (replyId) => {
               </span>
             </div>
 
-            <div class="message-timestamp">
-              {{ new Date(msg.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) }}
+            <div class="message-footer d-flex align-items-center justify-content-end gap-1 mt-1">
+              <small class="message-timestamp">
+                {{ new Date(msg.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) }}
+              </small>
+              
+              <div v-if="msg.sender.id === loggedInUserId" class="message-status">
+                <svg v-if="!msg.status" class="feather status-icon"><use href="/feather-sprite-v4.29.0.svg#clock" /></svg>
+                
+                <svg v-else-if="msg.status === 'sent' || msg.status === 'received'" class="feather status-icon"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
+                
+                <div v-else-if="msg.status === 'read'" class="d-flex" style="margin-left: -3px;">
+                  <svg class="feather status-icon text-primary"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
+                  <svg class="feather status-icon text-primary" style="margin-left: -10px;"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -430,7 +443,6 @@ const getRepliedMessage = (replyId) => {
 }
 .message-bubble.sent { background-color: #dcf8c6; }
 .message-sender { font-size: 0.8rem; font-weight: bold; color: #075E54; margin-bottom: 4px; }
-.message-timestamp { font-size: 0.75rem; color: #999; text-align: right; margin-top: 5px; }
 
 .reactions-container { display: flex; flex-wrap: wrap; gap: 4px; }
 .reaction-pill { cursor: pointer; font-size: 0.85rem; padding: 2px 6px !important; border: 1px solid #ddd; }
@@ -446,4 +458,24 @@ const getRepliedMessage = (replyId) => {
   border-left: 4px solid #2470dc;
   font-size: 0.85rem; margin-bottom: 5px;
 }
+
+/* Rimuovi il vecchio stile .message-timestamp se faceva conflitti, 
+   ora usiamo un container flex */
+.message-timestamp {
+  font-size: 0.70rem;
+  color: #999;
+}
+
+.status-icon {
+  width: 14px;
+  height: 14px;
+  color: #999; /* Grigio di default */
+  vertical-align: middle;
+}
+
+/* Colore blu per le spunte di lettura */
+.text-primary {
+  color: #0d6efd !important; /* Blu Bootstrap */
+}
+
 </style>
