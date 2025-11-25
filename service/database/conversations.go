@@ -77,17 +77,15 @@ func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID str
 func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error) {
 	var conversation Conversation
 
-	// Verifica membro
+	// 1. Verifica Membro
 	var isMember bool
 	err := db.c.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)", conversationID, requestingUserID).Scan(&isMember)
 	if err != nil || !isMember {
 		return conversation, fmt.Errorf("user not member or conversation not found")
 	}
 
-	// Segna come LETTI ('read') tutti i messaggi in questa conversazione
-	// che NON sono stati inviati da me (senderId != requestingUserID)
-	// e che non sono già letti.
-	_, err = db.c.Exec(`
+	// 2. Aggiorna stato lettura (Read Receipts)
+	_, _ = db.c.Exec(`
         UPDATE messages 
         SET status = 'read' 
         WHERE conversationId = ? 
@@ -95,12 +93,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
           AND status != 'read'`,
 		conversationID, requestingUserID)
 
-	if err != nil {
-		// Non blocchiamo tutto se fallisce l'aggiornamento stato, ma lo logghiamo o ignoriamo
-		// (Opzionale: fmt.Println("Errore aggiornamento stato lettura:", err))
-	}
-
-	// Dettagli conversazione
+	// 3. Dettagli base conversazione
 	var nullableName sql.NullString
 	var nullablePhoto sql.NullString
 	err = db.c.QueryRow("SELECT id, name, photoUrl, isGroup FROM conversations WHERE id = ?", conversationID).
@@ -111,7 +104,6 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	conversation.Name = nullableName.String
 	conversation.PhotoURL = nullablePhoto.String
 
-	// Nome/Foto per chat 1-1
 	if !conversation.IsGroup {
 		var otherUser User
 		var otherPhoto sql.NullString
@@ -127,7 +119,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		}
 	}
 
-	// Membri
+	// 4. Recupera Membri
 	rows, err := db.c.Query(`
         SELECT u.id, u.username, u.photoUrl FROM users u
         JOIN conversation_members cm ON u.id = cm.userId
@@ -147,9 +139,13 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		user.PhotoURL = photo.String
 		members = append(members, user)
 	}
+	// FIX LINTER 1: Controllo esplicito errore dopo il loop
+	if err = rows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating members: %w", err)
+	}
 	conversation.Members = members
 
-	// --- QUERY MESSAGGI AGGIORNATA ---
+	// 5. Recupera Messaggi
 	msgRows, err := db.c.Query(`
         SELECT m.id, m.content, m.contentType, m.timestamp, m.replyToMsgId, m.status,
                u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
@@ -170,14 +166,12 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		var senderPhoto sql.NullString
 		var replyTo sql.NullString
 
-		// AGGIUNTO &msg.Status NELLO SCAN (dopo replyTo)
 		if err := msgRows.Scan(&msg.ID, &msg.Content, &msg.ContentType, &msg.Timestamp, &replyTo, &msg.Status,
 			&msg.Sender.ID, &msg.Sender.Username, &senderPhoto); err != nil {
 			return conversation, fmt.Errorf("could not scan message: %w", err)
 		}
 		msg.Sender.PhotoURL = senderPhoto.String
 
-		// Gestione replyToMsgId
 		if replyTo.Valid {
 			val := replyTo.String
 			msg.ReplyToMsgId = &val
@@ -187,9 +181,13 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		messages = append(messages, msg)
 		messageMap[msg.ID] = len(messages) - 1
 	}
-	msgRows.Close()
+	// FIX LINTER 2: Controllo esplicito errore dopo il loop
+	if err = msgRows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating messages: %w", err)
+	}
+	msgRows.Close() // Chiudiamo esplicitamente prima della prossima query
 
-	// Reazioni
+	// 6. Recupera Reazioni
 	reactRows, err := db.c.Query(`
         SELECT r.id, r.messageId, r.emoji,
             u.id as reactorId, u.username as reactorUsername, u.photoUrl as reactorPhoto
@@ -216,6 +214,10 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		if idx, ok := messageMap[msgId]; ok {
 			messages[idx].Reactions = append(messages[idx].Reactions, reaction)
 		}
+	}
+	// FIX LINTER 3: Controllo esplicito errore dopo il loop
+	if err = reactRows.Err(); err != nil {
+		return conversation, fmt.Errorf("error iterating reactions: %w", err)
 	}
 
 	conversation.Messages = messages

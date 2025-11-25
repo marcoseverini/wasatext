@@ -240,7 +240,8 @@ func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoj
 	err = tx.QueryRow(`SELECT id FROM reactions WHERE messageId = ? AND userId = ?`,
 		messageID, requestingUserID).Scan(&existingId)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
 		// CASO A: Non esiste nessuna reazione -> CREIAMO NUOVA
 		reaction.ID = "react-" + uuid.New().String()
 		_, err = tx.Exec(`INSERT INTO reactions (id, messageId, userId, emoji) VALUES (?, ?, ?, ?)`,
@@ -248,15 +249,17 @@ func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoj
 		if err != nil {
 			return reaction, fmt.Errorf("error inserting reaction: %w", err)
 		}
-	} else if err == nil {
-		// CASO B: Esiste già una reazione -> AGGIORNIAMO L'EMOJI (Sostituzione)
+
+	case err == nil:
+		// CASO B: Esiste già una reazione -> AGGIORNIAMO L'EMOJI
 		reaction.ID = existingId
 		_, err = tx.Exec(`UPDATE reactions SET emoji = ? WHERE id = ?`, emoji, existingId)
 		if err != nil {
 			return reaction, fmt.Errorf("error updating reaction: %w", err)
 		}
-	} else {
-		// Errore generico database
+
+	default:
+		// CASO C: Errore generico database
 		return reaction, fmt.Errorf("error checking existing reaction: %w", err)
 	}
 
