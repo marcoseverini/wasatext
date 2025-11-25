@@ -65,9 +65,16 @@ const openForwardModal = (msg) => {
 };
 
 // Quando l'inoltro finisce con successo
-const onForwardSuccess = () => {
+const onForwardSuccess = async () => {
   showForwardModal.value = false;
   msgIdToForward.value = null;
+  
+  // --- AGGIUNTO ---
+  // Ricarica la conversazione per mostrare il messaggio appena inoltrato
+  // (utile se ho inoltrato proprio in questa chat)
+  await refreshConversation();
+  scrollToBottom();
+  // ----------------
 };
 
 onMounted(async () => { 
