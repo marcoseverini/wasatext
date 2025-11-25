@@ -47,7 +47,6 @@ const formatSnippet = (snippet) => {
   return snippet;
 };
 
-// Ricarica le conversazioni ogni volta che la pagina viene attivata
 onMounted(() => {
   loadConversations();
 });
@@ -56,21 +55,18 @@ onMounted(() => {
 <template>
   <div>
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-      <h1 class="h2">Conversazioni Recenti</h1>
-      <button class="btn btn-sm btn-outline-secondary" @click="loadConversations" title="Ricarica lista">
-        <svg class="feather" style="margin:0"><use href="/feather-sprite-v4.29.0.svg#refresh-cw" /></svg>
-      </button>
+      <h1 class="h2">Conversazioni</h1>
     </div>
 
     <ErrorMsg v-if="errorMsg" :msg="errorMsg" />
 
     <div v-if="loading" class="text-center mt-5">
       <LoadingSpinner />
-      <p class="text-muted mt-2">Aggiornamento...</p>
+      <p class="text-muted mt-2">Caricamento...</p>
     </div>
 
     <div v-if="!loading && !errorMsg">
-      <div v-if="conversations.length === 0" class="text-center text-muted mt-5 p-5 bg-light rounded">
+      <div v-if="conversations.length === 0" class="text-center text-muted mt-5 p-5">
         <h4>Nessuna conversazione</h4>
         <p>Usa il menu a sinistra per cercare utenti o creare un gruppo!</p>
       </div>
@@ -84,7 +80,7 @@ onMounted(() => {
           @click.prevent="goToConversation(convo.id)"
         >
           <img
-            :src="convo.photoUrl || 'https://placehold.co/64x64/25d366/FFF?text=' + convo.name.charAt(0)" 
+            :src="convo.photoUrl || 'https://placehold.co/64x64/e9ecef/000000?text=' + convo.name.charAt(0).toUpperCase()" 
             alt="foto" width="50" height="50" class="rounded-circle flex-shrink-0 border"
             style="object-fit: cover;"
           >
@@ -107,5 +103,4 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Nessuno stile particolare qui, tutto gestito da Bootstrap */
 </style>

@@ -113,7 +113,7 @@ const handleSave = async () => {
             
             <div class="d-flex align-items-center gap-3 mb-2">
               <img 
-                :src="newPhotoUrl || 'https://placehold.co/80x80/e9ecef/6c757d?text=No+Foto'" 
+                :src="newPhotoUrl || 'https://placehold.co/80x80/e9ecef/000000?text=No+Foto'" 
                 class="rounded-circle border" 
                 width="80" height="80" 
                 style="object-fit: cover;" 

@@ -92,7 +92,7 @@ watch(() => route.name, () => {
             <div class="text-center p-3 border-bottom mb-3">
               <div class="position-relative d-inline-block mb-2">
                 <img 
-                  :src="currentPhotoUrl || 'https://placehold.co/80x80/e9ecef/6c757d?text=User'" 
+                  :src="currentPhotoUrl || 'https://placehold.co/80x80/e9ecef/000000?text=' + currentUsername.charAt(0).toUpperCase()" 
                   class="rounded-circle border border-2 border-white shadow-sm"
                   width="80" height="80" 
                   style="object-fit: cover;"

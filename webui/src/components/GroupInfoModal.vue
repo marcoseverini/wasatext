@@ -140,7 +140,7 @@ const handleLeaveGroup = async () => {
         <div class="mb-4 text-center border-bottom pb-3">
             <div class="position-relative d-inline-block">
                 <img 
-                    :src="conversation.photoUrl || 'https://placehold.co/80x80/25d366/FFF?text=' + conversation.name.charAt(0)" 
+                    :src="conversation.photoUrl || 'https://placehold.co/80x80/e9ecef/000000?text=' + conversation.name.charAt(0).toUpperCase()" 
                     class="rounded-circle border" width="80" height="80" style="object-fit: cover;"
                 >
                 <div v-if="loadingPhoto" class="position-absolute top-50 start-50 translate-middle">
@@ -176,8 +176,9 @@ const handleLeaveGroup = async () => {
           <div class="members-list border rounded p-2 bg-light">
             <div v-for="member in conversation.members" :key="member.id" class="d-flex align-items-center py-1">
               <img 
-                :src="member.photoUrl || 'https://placehold.co/24x24/25d366/FFF?text=' + member.username.charAt(0)" 
-                class="rounded-circle me-2" width="24" height="24"
+                :src="member.photoUrl || 'https://placehold.co/24x24/e9ecef/000000?text=' + member.username.charAt(0).toUpperCase()" 
+                class="rounded-circle me-2 border" width="24" height="24"
+                style="object-fit: cover;"
               >
               <span>{{ member.username }}</span>
             </div>

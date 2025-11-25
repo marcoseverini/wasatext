@@ -143,8 +143,9 @@ const handleCreateGroup = async () => {
               @click.prevent="addMember(user)"
             >
               <img
-                :src="user.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + user.username.charAt(0)" 
-                alt="foto" width="40" height="40" class="rounded-circle flex-shrink-0"
+                :src="user.photoUrl || 'https://placehold.co/40x40/e9ecef/000000?text=' + user.username.charAt(0).toUpperCase()" 
+                alt="foto" width="40" height="40" class="rounded-circle flex-shrink-0 border"
+                style="object-fit: cover;"
               >
               <h6 class="mb-0">{{ user.username }}</h6>
             </a>

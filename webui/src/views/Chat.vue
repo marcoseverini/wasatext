@@ -216,8 +216,9 @@ const getRepliedMessage = (replyId) => {
       <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header justify-content-between">
         <div class="d-flex align-items-center">
           <img
-            :src="conversation.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + conversation.name.charAt(0)"
-            alt="foto" width="40" height="40" class="rounded-circle me-3"
+            :src="conversation.photoUrl || 'https://placehold.co/40x40/e9ecef/000000?text=' + conversation.name.charAt(0).toUpperCase()"
+            alt="foto" width="40" height="40" class="rounded-circle me-3 border"
+            style="object-fit: cover;"
           >
           <h1 class="h4 mb-0">{{ conversation.name }}</h1>
         </div>

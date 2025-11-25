@@ -68,8 +68,9 @@ const handleForward = async (targetConvId) => {
             :disabled="sending"
           >
             <img 
-              :src="convo.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + convo.name.charAt(0)" 
+              :src="convo.photoUrl || 'https://placehold.co/40x40/e9ecef/000000?text=' + convo.name.charAt(0).toUpperCase()" 
               class="rounded-circle flex-shrink-0 border" width="40" height="40"
+              style="object-fit: cover;"
             >
             <div class="text-truncate fw-bold">{{ convo.name }}</div>
             
