@@ -15,12 +15,12 @@ const emit = defineEmits(['close', 'group-created']);
 const groupName = ref('');
 const searchQuery = ref('');
 const searchResults = ref([]);
-const selectedMembers = ref([]); // La lista dei membri da aggiungere
+const selectedMembers = ref([]); 
 const loadingSearch = ref(false);
 const loadingCreate = ref(false);
 const errorMsg = ref('');
 
-// Calcola se il form è valido per abilitare il pulsante "Crea"
+// Calcola se il form è valido
 const isFormValid = computed(() => {
   return groupName.value.length >= 1 && selectedMembers.value.length >= 1;
 });
@@ -34,13 +34,25 @@ const handleSearch = async () => {
   searchResults.value = [];
   
   try {
+    // Recuperiamo il MIO ID per escludermi dalla ricerca
+    const myId = localStorage.getItem('sessionToken');
+
     const data = await apiSearchUsers(searchQuery.value);
-    // Filtriamo gli utenti già selezionati
+    
+    // Set degli ID già selezionati nel carrello
     const selectedIds = new Set(selectedMembers.value.map(m => m.id));
-    searchResults.value = data.users.filter(user => !selectedIds.has(user.id)) || [];
+    
+    // --- MODIFICA QUI ---
+    // Filtriamo:
+    // 1. Utenti già selezionati (!selectedIds.has)
+    // 2. Me stesso (user.id !== myId)
+    searchResults.value = data.users.filter(user => 
+      !selectedIds.has(user.id) && user.id !== myId
+    ) || [];
+    // --------------------
     
     if (searchResults.value.length === 0) {
-      errorMsg.value = "Nessun altro utente trovato.";
+      errorMsg.value = "Nessun utente trovato.";
     }
   } catch (err) {
     errorMsg.value = err.message;
@@ -49,19 +61,16 @@ const handleSearch = async () => {
   }
 };
 
-// Aggiunge un utente dalla ricerca alla lista 'selectedMembers'
 const addMember = (user) => {
   selectedMembers.value.push(user);
-  searchResults.value = []; // Pulisce i risultati della ricerca
-  searchQuery.value = ''; // Pulisce l'input di ricerca
+  searchResults.value = []; 
+  searchQuery.value = ''; 
 };
 
-// Rimuove un utente dalla lista 'selectedMembers'
 const removeMember = (userId) => {
   selectedMembers.value = selectedMembers.value.filter(member => member.id !== userId);
 };
 
-// Funzione finale per creare il gruppo
 const handleCreateGroup = async () => {
   if (!isFormValid.value) {
     errorMsg.value = "Inserisci un nome per il gruppo e almeno un membro.";
@@ -72,13 +81,8 @@ const handleCreateGroup = async () => {
   errorMsg.value = '';
 
   try {
-    // 1. Estrai solo gli ID dalla lista di oggetti 'selectedMembers'
     const memberIds = selectedMembers.value.map(member => member.id);
-    
-    // 2. Chiama l'API
     const newGroup = await apiCreateGroup(groupName.value, memberIds);
-    
-    // 3. Emetti l'evento di successo con l'ID del nuovo gruppo
     emit('group-created', newGroup.id);
     
   } catch (err) {
@@ -99,7 +103,6 @@ const handleCreateGroup = async () => {
       
       <div class="card-body">
         <form @submit.prevent="handleCreateGroup">
-          <!-- Input Nome Gruppo -->
           <div class="mb-3">
             <label for="groupNameInput" class="form-label">Nome Gruppo:</label>
             <input 
@@ -112,7 +115,6 @@ const handleCreateGroup = async () => {
             >
           </div>
 
-          <!-- Input Ricerca Membri -->
           <div class="mb-3">
             <label for="searchUserInput" class="form-label">Aggiungi Membri:</label>
             <div class="input-group">
@@ -131,7 +133,6 @@ const handleCreateGroup = async () => {
             </div>
           </div>
 
-          <!-- Risultati Ricerca -->
           <ErrorMsg v-if="errorMsg" :msg="errorMsg" />
           <div v-if="searchResults.length > 0" class="list-group list-group-flush mb-3 search-results-box">
             <a 
@@ -141,7 +142,6 @@ const handleCreateGroup = async () => {
               class="list-group-item list-group-item-action d-flex gap-3 py-2 align-items-center"
               @click.prevent="addMember(user)"
             >
-              
               <img
                 :src="user.photoUrl || 'https://placehold.co/40x40/25d366/FFF?text=' + user.username.charAt(0)" 
                 alt="foto" width="40" height="40" class="rounded-circle flex-shrink-0"
@@ -150,7 +150,6 @@ const handleCreateGroup = async () => {
             </a>
           </div>
 
-          <!-- Membri Selezionati -->
           <div v-if="selectedMembers.length > 0" class="mb-3">
             <h6 class="text-muted small">MEMBRI ({{ selectedMembers.length }})</h6>
             <div class="selected-members-list">
@@ -161,7 +160,6 @@ const handleCreateGroup = async () => {
             </div>
           </div>
 
-          <!-- Pulsante Crea Gruppo -->
           <button type="submit" class="btn btn-primary w-100" :disabled="!isFormValid || loadingCreate">
             <LoadingSpinner v-if="loadingCreate" />
             <span v-else>Crea Gruppo</span>
@@ -190,11 +188,10 @@ const handleCreateGroup = async () => {
   width: 100%;
   max-width: 500px;
   margin: 1rem;
-  background-color: white; /* --- AGGIUNGI QUESTA RIGA --- */
-  border-radius: 0.375rem; /* Aggiunge i bordi arrotondati del 'card' */
+  background-color: white;
+  border-radius: 0.375rem;
 }
 
-/* (il resto degli stili .search-results-box, .badge, ecc. rimane uguale) */
 .search-results-box {
   max-height: 150px;
   overflow-y: auto;

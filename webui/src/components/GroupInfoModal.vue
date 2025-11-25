@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed } from 'vue';
-// Aggiungi apiSetGroupPhoto agli import
 import { apiSearchUsers, apiAddToGroup, apiLeaveGroup, apiSetGroupName, apiSetGroupPhoto } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
@@ -17,7 +16,7 @@ const isEditingName = ref(false);
 const newGroupName = ref('');
 const loadingName = ref(false);
 
-// Stato Modifica Foto (NUOVO)
+// Stato Modifica Foto
 const newPhotoUrl = ref('');
 const loadingPhoto = ref(false);
 
@@ -50,12 +49,12 @@ const saveGroupName = async () => {
   }
 };
 
-// --- GESTIONE FOTO GRUPPO (NUOVO) ---
+// --- GESTIONE FOTO GRUPPO ---
 const handleFileUpload = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
-  if (file.size > 1000000) { // Limite 1MB
+  if (file.size > 1000000) { 
     errorMsg.value = "L'immagine è troppo grande (max 1MB).";
     return;
   }
@@ -67,7 +66,7 @@ const handleFileUpload = async (event) => {
     errorMsg.value = '';
     try {
       await apiSetGroupPhoto(props.conversation.id, base64String);
-      emit('refresh'); // Ricarica per vedere la nuova foto
+      emit('refresh'); 
     } catch (err) {
       errorMsg.value = "Errore upload foto: " + err.message;
     } finally {
@@ -148,7 +147,7 @@ const handleLeaveGroup = async () => {
                     <LoadingSpinner />
                 </div>
                 
-                <label class="btn btn-sm btn-light position-absolute bottom-0 end-0 rounded-circle border shadow-sm p-1" style="cursor: pointer;" title="Cambia foto">
+                <label class="btn btn-sm btn-light position-absolute bottom-0 end-0 rounded-circle border shadow-sm edit-photo-btn" title="Cambia foto">
                     <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#camera" /></svg>
                     <input type="file" accept="image/*" class="d-none" @change="handleFileUpload">
                 </label>
@@ -248,4 +247,20 @@ const handleLeaveGroup = async () => {
 .members-list { max-height: 150px; overflow-y: auto; }
 .search-results { max-height: 150px; overflow-y: auto; }
 .feather { width: 16px; height: 16px; vertical-align: middle; }
+
+/* FIX CENTRATURA ICONA FOTOCAMERA */
+.edit-photo-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  cursor: pointer;
+}
+.edit-photo-btn svg {
+  margin: 0 !important;
+  width: 16px;
+  height: 16px;
+}
 </style>
