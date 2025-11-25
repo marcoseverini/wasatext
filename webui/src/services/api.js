@@ -69,6 +69,8 @@ export async function apiLogin(username) {
         // --- QUESTA RIGA È FONDAMENTALE ---
         localStorage.setItem('username', username); 
         // ----------------------------------
+
+        localStorage.removeItem('photoUrl');
     }
     return response;
 }

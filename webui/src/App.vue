@@ -38,14 +38,19 @@ const fetchMyProfile = async () => {
   if (!myId || !myName) return;
 
   try {
-    // TRUCCO: Cerco me stesso per ottenere la mia foto aggiornata dal DB
+    // Cerco me stesso
     const data = await apiSearchUsers(myName);
+    console.log("Cercato utente:", myName, "Risultati:", data); // <--- DEBUG 1
+
+    // Cerco l'utente con il mio ID
     const me = data.users.find(u => u.id === myId);
+    console.log("Trovato me stesso?", me); // <--- DEBUG 2
     
     if (me) {
       // Se mi trovo, aggiorno lo stato locale
       currentPhotoUrl.value = me.photoUrl || '';
       localStorage.setItem('photoUrl', currentPhotoUrl.value);
+      console.log("Foto aggiornata:", currentPhotoUrl.value); // <--- DEBUG 3
     }
   } catch (e) {
     console.error("Impossibile recuperare profilo utente", e);
