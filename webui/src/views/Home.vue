@@ -1,56 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'; // Importa onMounted per il ciclo di vita
-import { useRouter } from 'vue-router'; // Per il routing
-import { apiGetMyConversations } from '@/services/api.js'; // Importa la funzione API per ottenere le conversazioni
-import ErrorMsg from '@/components/ErrorMsg.vue'; // Componente per mostrare messaggi di errore
-import LoadingSpinner from '@/components/LoadingSpinner.vue'; // Componente per mostrare uno spinner di caricamento
-import SearchModal from '@/components/SearchModal.vue'; // Componente per il modale di ricerca utenti
-import CreateGroupModal from '@/components/CreateGroupModal.vue'; // Componente per il modale di creazione gruppo
+import { ref, onMounted } from 'vue'; 
+import { useRouter } from 'vue-router'; 
+import { apiGetMyConversations } from '@/services/api.js'; 
+import ErrorMsg from '@/components/ErrorMsg.vue'; 
+import LoadingSpinner from '@/components/LoadingSpinner.vue'; 
 
+const conversations = ref([]); 
+const loading = ref(true); 
+const errorMsg = ref(''); 
+const router = useRouter(); 
 
-// Definiamo le variabili reattive
-const conversations = ref([]); // Lista delle conversazioni
-const loading = ref(true); // Stato di caricamento
-const errorMsg = ref(''); // Messaggio di errore
-const router = useRouter(); // Ottiene l'istanza del router
-const isSearchModalVisible = ref(false); // Variabile per il modale di ricerca utenti
-
-// Aggiunge la variabile per il nuovo modale
-const isCreateGroupModalVisible = ref(false);
-
-// ... altri import ...
-
-// Helper per formattare la data
-const formatTimestamp = (isoString) => {
-  if (!isoString) return '';
-  const date = new window.Date(isoString);
-  // Se è oggi, mostra solo l'ora, altrimenti data e ora
-  const today = new window.Date();
-  const isToday = date.getDate() === today.getDate() &&
-                  date.getMonth() === today.getMonth() &&
-                  date.getFullYear() === today.getFullYear();
-
-  if (isToday) {
-    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-  } else {
-    return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + 
-           ' ' + date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-  }
-};
-
-// Helper per l'anteprima del messaggio
-const formatSnippet = (snippet) => {
-  if (!snippet) return 'Nessun messaggio';
-  // Se è una stringa Base64 di un'immagine
-  if (snippet.startsWith('data:image')) {
-    return '📷 [Foto]';
-  }
-  return snippet;
-};
-
-// ... resto del codice (loadConversations, ecc.) ...
-
-// Funzione per caricare le conversazioni
 const loadConversations = async () => {
   try {
     loading.value = true;
@@ -64,24 +23,31 @@ const loadConversations = async () => {
   }
 };
 
-// Funzione per andare alla chat
 const goToConversation = (convId) => {
   router.push(`/conversations/${convId}`);
 };
 
-// Funzione da chiamare quando il modale di ricerca ha creato una chat
-const onChatCreated = (newConvId) => {
-  isSearchModalVisible.value = false; // Chiude il modale
-  router.push(`/conversations/${newConvId}`); // Naviga alla nuova chat
+const formatTimestamp = (isoString) => {
+  if (!isoString) return '';
+  const date = new window.Date(isoString);
+  const today = new window.Date();
+  const isToday = date.getDate() === today.getDate() &&
+                  date.getMonth() === today.getMonth() &&
+                  date.getFullYear() === today.getFullYear();
+  if (isToday) {
+    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  } else {
+    return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+  }
 };
 
-// Aggiunge la funzione per il modale del gruppo
-const onGroupCreated = (newGroupId) => {
-  isCreateGroupModalVisible.value = false; // Chiudi il modale
-  router.push(`/conversations/${newGroupId}`); // Naviga alla nuova chat
+const formatSnippet = (snippet) => {
+  if (!snippet) return 'Nessun messaggio';
+  if (snippet.startsWith('data:image')) return '📷 [Foto]';
+  return snippet;
 };
 
-// Carica le conversazioni al montaggio della pagina
+// Ricarica le conversazioni ogni volta che la pagina viene attivata
 onMounted(() => {
   loadConversations();
 });
@@ -89,101 +55,57 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Intestazione della Pagina -->
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-      <h1 class="h2">Le mie Conversazioni</h1>
-      <div class="btn-toolbar mb-2 mb-md-0">
-        <button type="button" class="btn btn-sm btn-outline-secondary me-2" @click="isSearchModalVisible = true">
-          <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#search" /></svg>
-          Cerca Utenti
-        </button>
-        <!-- Pulsante per aprire il modale di creazione gruppo -->
-        <button type="button" class="btn btn-sm btn-outline-primary" @click="isCreateGroupModalVisible = true">
-          <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#users" /></svg>
-          Crea Gruppo
-        </button>
-      </div>
+      <h1 class="h2">Conversazioni Recenti</h1>
+      <button class="btn btn-sm btn-outline-secondary" @click="loadConversations" title="Ricarica lista">
+        <svg class="feather" style="margin:0"><use href="/feather-sprite-v4.29.0.svg#refresh-cw" /></svg>
+      </button>
     </div>
 
-    <!-- Messaggio di Errore -->
     <ErrorMsg v-if="errorMsg" :msg="errorMsg" />
 
-    <!-- Spinner di Caricamento -->
     <div v-if="loading" class="text-center mt-5">
       <LoadingSpinner />
-      <p>Caricamento conversazioni...</p>
+      <p class="text-muted mt-2">Aggiornamento...</p>
     </div>
 
-    <!-- Lista Conversazioni -->
     <div v-if="!loading && !errorMsg">
-      <!-- Stato Vuoto -->
-      <div v-if="conversations.length === 0" class="text-center text-muted mt-5">
-        <p>Non hai ancora nessuna conversazione.</p>
-        <p>Usa "Cerca Utenti" o "Crea Gruppo" per iniziarne una!</p>
+      <div v-if="conversations.length === 0" class="text-center text-muted mt-5 p-5 bg-light rounded">
+        <h4>Nessuna conversazione</h4>
+        <p>Usa il menu a sinistra per cercare utenti o creare un gruppo!</p>
       </div>
 
-      <!-- La Lista (questa parte è invariata) -->
-      <div v-else class="list-group">
+      <div v-else class="list-group shadow-sm">
         <a 
           v-for="convo in conversations"
           :key="convo.id" 
           href="#"
-          class="list-group-item list-group-item-action d-flex gap-3 py-3"
+          class="list-group-item list-group-item-action d-flex gap-3 py-3 align-items-center"
           @click.prevent="goToConversation(convo.id)"
         >
-          
           <img
             :src="convo.photoUrl || 'https://placehold.co/64x64/25d366/FFF?text=' + convo.name.charAt(0)" 
-            alt="foto" width="64" height="64" class="rounded-circle flex-shrink-0"
+            alt="foto" width="50" height="50" class="rounded-circle flex-shrink-0 border"
+            style="object-fit: cover;"
           >
           
-          <div class="d-flex gap-2 w-100 justify-content-between">
-            <div style="overflow: hidden;"> <h6 class="mb-0">{{ convo.name }}</h6>
-              
-              <p class="mb-0 opacity-75 text-truncate">
+          <div class="d-flex gap-2 w-100 justify-content-between overflow-hidden">
+            <div class="overflow-hidden">
+              <h6 class="mb-0 text-truncate">{{ convo.name }}</h6>
+              <p class="mb-0 opacity-75 text-truncate small text-muted">
                 {{ formatSnippet(convo.latestMessageSnippet) }}
               </p>
-              
             </div>
-            
-            <small class="opacity-50 text-nowrap">
+            <small class="opacity-50 text-nowrap" style="font-size: 0.8rem;">
               {{ formatTimestamp(convo.latestMessageTimestamp) }}
             </small>
-            
           </div>
         </a>
       </div>
     </div>
-
-    <!-- Modale Ricerca Utenti -->
-    <SearchModal 
-      :show="isSearchModalVisible" 
-      @close="isSearchModalVisible = false"
-      @chat-created="onChatCreated"
-    />
-
-    <!-- Aggiunge il nuovo modale per creare i gruppi -->
-    <CreateGroupModal
-      :show="isCreateGroupModalVisible"
-      @close="isCreateGroupModalVisible = false"
-      @group-created="onGroupCreated"
-    />
   </div>
 </template>
 
-<style> /* Stili specifici per la Home.vue */
-
-/* Stile per gli elementi della lista delle conversazioni */
-.list-group-item-action { 
-  align-items: center;
-}
-
-/* Stile per il testo che potrebbe essere troppo lungo */
-.list-group-item-action .mb-0 {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 40vw; 
-}
-
+<style scoped>
+/* Nessuno stile particolare qui, tutto gestito da Bootstrap */
 </style>
