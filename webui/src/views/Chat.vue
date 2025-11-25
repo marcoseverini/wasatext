@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'; 
+import { ref, onMounted, nextTick, watch } from 'vue'; 
 import { useRoute, useRouter } from 'vue-router'; 
 import { 
   apiGetConversation, 
@@ -20,8 +20,7 @@ const isSending = ref(false);
 const router = useRouter();
 const showGroupInfo = ref(false); 
 
-// STATO PER LA REPLY
-const replyingToMsg = ref(null); // Contiene l'intero oggetto messaggio a cui stiamo rispondendo
+const replyingToMsg = ref(null); 
 
 const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 const activeReactionMenuId = ref(null);
@@ -30,7 +29,9 @@ const route = useRoute();
 const convId = route.params.id; 
 const loggedInUserId = localStorage.getItem('sessionToken'); 
 
-// Ricarica conversazione
+// Ref per lo scroll automatico
+const messagesContainer = ref(null);
+
 const refreshConversation = async () => {
   try {
     const data = await apiGetConversation(convId);
@@ -46,6 +47,14 @@ const onLeftGroup = () => {
   router.push('/'); 
 };
 
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    }
+  });
+};
+
 onMounted(async () => { 
   try {
     loading.value = true;
@@ -55,6 +64,7 @@ onMounted(async () => {
       data.messages.reverse(); 
     }
     conversation.value = data;
+    scrollToBottom(); // Scrolla in fondo all'apertura
   } catch (err) {
     errorMsg.value = err.message;
   } finally {
@@ -62,7 +72,7 @@ onMounted(async () => {
   }
 });
 
-// Invia Messaggio (Ora gestisce la reply)
+// --- INVIO MESSAGGI (TESTO) ---
 const handleSendMessage = async () => {
   if (newMessageText.value.trim() === '') return;
   isSending.value = true;
@@ -70,12 +80,11 @@ const handleSendMessage = async () => {
   try {
     const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
     
-    // 1. Inviamo il messaggio
-    await apiSendMessage(convId, newMessageText.value, replyId);
+    // Chiama API con type='text'
+    await apiSendMessage(convId, newMessageText.value, 'text', replyId);
     
-    // 2. INVECE DI fare .push(newMsg), ricarichiamo la lista dal server
-    // Questo garantisce che tutti i collegamenti (reply, timestamp, foto) siano corretti
     await refreshConversation(); 
+    scrollToBottom();
 
     newMessageText.value = '';
     replyingToMsg.value = null; 
@@ -84,6 +93,42 @@ const handleSendMessage = async () => {
   } finally {
     isSending.value = false;
   }
+};
+
+// --- INVIO FOTO (NUOVO) ---
+const handlePhotoUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 1000000) {
+    alert("L'immagine è troppo grande (max 1MB).");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64String = e.target.result;
+    isSending.value = true;
+    errorMsg.value = '';
+    
+    try {
+      const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
+      
+      // Chiama API con type='photo' e la stringa Base64 come contenuto
+      await apiSendMessage(convId, base64String, 'photo', replyId);
+      
+      await refreshConversation();
+      scrollToBottom();
+      replyingToMsg.value = null;
+    } catch (err) {
+      errorMsg.value = "Errore invio foto: " + err.message;
+    } finally {
+      isSending.value = false;
+      // Resetta l'input file per poter ricaricare la stessa immagine se serve
+      event.target.value = '';
+    }
+  };
+  reader.readAsDataURL(file);
 };
 
 const handleDeleteMessage = async (messageId) => {
@@ -99,7 +144,6 @@ const handleDeleteMessage = async (messageId) => {
   }
 };
 
-// --- REAZIONI ---
 const toggleReactionMenu = (msgId) => {
   activeReactionMenuId.value = activeReactionMenuId.value === msgId ? null : msgId;
 };
@@ -132,17 +176,14 @@ const handleRemoveReaction = async (msgId, reaction) => {
   }
 };
 
-// --- RISPOSTA ---
 const startReply = (msg) => {
   replyingToMsg.value = msg;
-  // Focus sull'input (opzionale, richiede ref all'input, per semplicità lo omettiamo qui)
 };
 
 const cancelReply = () => {
   replyingToMsg.value = null;
 };
 
-// Helper per trovare il messaggio padre dato l'ID (usato nel template)
 const getRepliedMessage = (replyId) => {
   return conversation.value.messages.find(m => m.id === replyId);
 };
@@ -171,7 +212,7 @@ const getRepliedMessage = (replyId) => {
         </button>
       </div>
 
-      <div class="message-list" @click="activeReactionMenuId = null"> 
+      <div class="message-list" @click="activeReactionMenuId = null" ref="messagesContainer"> 
         <div v-if="conversation.messages.length === 0" class="text-center text-muted">
           Questo è l'inizio della tua conversazione.
         </div>
@@ -195,14 +236,26 @@ const getRepliedMessage = (replyId) => {
                 <small class="fw-bold d-block text-primary">
                   {{ getRepliedMessage(msg.replyToMsgId).sender.username }}
                 </small>
+                
                 <small class="text-truncate d-block" style="max-width: 200px;">
-                  {{ getRepliedMessage(msg.replyToMsgId).content }}
+                  <span v-if="getRepliedMessage(msg.replyToMsgId).contentType === 'photo'">📷 [Foto]</span>
+                  <span v-else>{{ getRepliedMessage(msg.replyToMsgId).content }}</span>
                 </small>
               </div>
             </div>
 
             <div class="message-content">
-              {{ msg.content }}
+              <div v-if="msg.contentType === 'photo'">
+                <img 
+                  :src="msg.content" 
+                  class="img-fluid rounded" 
+                  style="max-width: 300px; max-height: 300px;" 
+                  alt="Foto inviata"
+                >
+              </div>
+              <div v-else>
+                {{ msg.content }}
+              </div>
             </div>
             
             <div v-if="msg.reactions && msg.reactions.length > 0" class="reactions-container mt-1">
@@ -224,7 +277,6 @@ const getRepliedMessage = (replyId) => {
           </div>
 
           <div class="actions-group d-flex gap-1">
-            
             <button 
               class="btn btn-sm btn-outline-secondary action-btn"
               @click.stop="startReply(msg)"
@@ -266,13 +318,22 @@ const getRepliedMessage = (replyId) => {
           <div class="d-flex align-items-center border-start border-4 border-primary ps-2">
             <div>
               <small class="fw-bold d-block text-primary">Rispondendo a {{ replyingToMsg.sender.username }}</small>
-              <small class="text-muted text-truncate d-block" style="max-width: 300px;">{{ replyingToMsg.content }}</small>
+              <small class="text-muted text-truncate d-block" style="max-width: 300px;">
+                 <span v-if="replyingToMsg.contentType === 'photo'">📷 [Foto]</span>
+                 <span v-else>{{ replyingToMsg.content }}</span>
+              </small>
             </div>
           </div>
           <button type="button" class="btn-close" aria-label="Close" @click="cancelReply"></button>
         </div>
 
-        <form class="d-flex gap-2" @submit.prevent="handleSendMessage">
+        <form class="d-flex gap-2 align-items-center" @submit.prevent="handleSendMessage">
+          
+          <label class="btn btn-outline-secondary" style="cursor: pointer;" title="Invia Foto">
+            <svg class="feather" style="width: 20px; height: 20px; vertical-align: middle;"><use href="/feather-sprite-v4.29.0.svg#camera" /></svg>
+            <input type="file" accept="image/*" class="d-none" @change="handlePhotoUpload" :disabled="isSending">
+          </label>
+
           <input 
             v-model="newMessageText" 
             type="text" 
@@ -281,8 +342,8 @@ const getRepliedMessage = (replyId) => {
             :disabled="isSending"
             autocomplete="off"
           >
-          <button type="submit" class="btn btn-primary" :disabled="isSending">
-            <LoadingSpinner v-if="isSending" />
+          <button type="submit" class="btn btn-primary" :disabled="isSending || newMessageText.trim() === ''">
+            <LoadingSpinner v-if="isSending && newMessageText.trim() !== ''" />
             <svg v-else class="feather" style="width: 20px; height: 20px;"><use href="/feather-sprite-v4.29.0.svg#send" /></svg>
           </button>
         </form>

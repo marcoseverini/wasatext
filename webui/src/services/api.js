@@ -120,13 +120,21 @@ export async function apiGetConversation(conversationId) {
 }
 
 /**
- * Invia un nuovo messaggio di testo a una conversazione
- * Accetta un replyToMsgId opzionale
+ * Invia un messaggio (Testo O Foto)
+ * - Se 'content' è testo, passa type='text' (default)
+ * - Se 'content' è un'immagine Base64, passa type='photo'
  */
-export async function apiSendMessage(conversationId, messageText, replyToMsgId = null) {
-  const payload = { text: messageText };
+export async function apiSendMessage(conversationId, content, type = 'text', replyToMsgId = null) {
+  const payload = {};
+  
   if (replyToMsgId) {
     payload.replyToMsgId = replyToMsgId;
+  }
+
+  if (type === 'text') {
+    payload.text = content;
+  } else if (type === 'photo') {
+    payload.photoUrl = content;
   }
 
   return apiFetch(`/conversations/${conversationId}/messages`, {
