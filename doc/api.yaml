@@ -616,13 +616,13 @@ components:
       example: "Maria"
       
     PhotoURL:
-      description: URL di un'immagine (foto profilo o messaggio).
+      description: URL di un'immagine (http o data-uri Base64).
       type: string
-      format: url
+      # format: url 
       pattern: '^.+$'
       minLength: 1
-      maxLength: 2048
-      example: "https://example.com/photos/image.jpg"
+      maxLength: 1000000  # 1MB
+      example: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
     
     Emoji:
       description: Un singolo carattere emoji per una reazione.

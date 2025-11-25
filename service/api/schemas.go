@@ -51,10 +51,20 @@ type PhotoURL string // components/schemas/PhotoURL
 func (p PhotoURL) Validate() error {
 	// Prende una stringa e verifica se è un PhotoURL valido
 
-	if len(p) < 1 || len(p) > 2048 {
-		return errors.New("URL foto non valido (lunghezza max 2048)")
+	// Controllo Lunghezza Aumentato
+	if len(p) < 1 || len(p) > 1000000 {
+		return errors.New("URL foto non valido (lunghezza max 1.000.000 caratteri)")
 	}
-	if _, err := url.ParseRequestURI(string(p)); err != nil {
+
+	// Opzionale: Rilassare il controllo URI per supportare "data:image/..."
+	// Se inizia con "data:", lo consideriamo valido senza parsarlo con url.ParseRequestURI
+	str := string(p)
+	if len(str) > 5 && str[:5] == "data:" {
+		return nil // È un'immagine Base64, va bene così
+	}
+
+	// Altrimenti controlliamo che sia un URL web valido
+	if _, err := url.ParseRequestURI(str); err != nil {
 		return errors.New("URL foto non valido (formato URI non corretto)")
 	}
 	return nil
