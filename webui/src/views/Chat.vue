@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'; 
+import { ref, onMounted, nextTick } from 'vue'; 
 import { useRoute, useRouter } from 'vue-router'; 
 import { 
   apiGetConversation, 
@@ -329,8 +329,8 @@ const getRepliedMessage = (replyId) => {
 
         <form class="d-flex gap-2 align-items-center" @submit.prevent="handleSendMessage">
           
-          <label class="btn btn-outline-secondary" style="cursor: pointer;" title="Invia Foto">
-            <svg class="feather" style="width: 20px; height: 20px; vertical-align: middle;"><use href="/feather-sprite-v4.29.0.svg#camera" /></svg>
+          <label class="btn btn-outline-secondary upload-btn" title="Invia Foto">
+            <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#camera" /></svg>
             <input type="file" accept="image/*" class="d-none" @change="handlePhotoUpload" :disabled="isSending">
           </label>
 
@@ -373,6 +373,13 @@ const getRepliedMessage = (replyId) => {
   padding: 0 !important; width: 30px !important; height: 30px !important; border-radius: 4px;
 }
 .action-btn svg { width: 16px; height: 16px; margin: 0 !important; vertical-align: middle; }
+
+/* Stile per il bottone upload */
+.upload-btn {
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  padding: 0 !important; width: 38px !important; height: 38px !important; cursor: pointer; border-radius: 4px;
+}
+.upload-btn svg { width: 20px; height: 20px; margin: 0 !important; vertical-align: middle; }
 
 .emoji-picker {
   position: absolute; top: 35px; left: 0;
