@@ -757,7 +757,6 @@ components:
           example: "read"
         replyToMsgId:
           $ref: '#/components/schemas/InternalID'
-          description: "Se presente, indica l'ID del messaggio a cui questo sta rispondendo."
         reactions:
           type: array
           description: Lista delle reazioni associate a questo messaggio.
