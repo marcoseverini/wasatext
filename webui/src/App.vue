@@ -63,7 +63,13 @@ watch(
   () => route.name,
   () => {
     const savedName = localStorage.getItem('username');
-    if (savedName) currentUsername.value = savedName;
+    if (savedName) {
+      currentUsername.value = savedName;
+    } else { // vedi mpo
+      // Se non c'è username (es. logout), resetta tutto
+      currentUsername.value = 'Utente';
+      currentPhotoUrl.value = ''; 
+    }
     
     // Aggiorna anche la foto al cambio rotta (es. dopo login)
     const savedPhoto = localStorage.getItem('photoUrl');

@@ -86,9 +86,13 @@ export async function apiGetMyConversations() {
 export function apiLogout() {
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('username');
+    
+    // --- AGGIUNGI QUESTA RIGA ---
+    localStorage.removeItem('photoUrl'); 
+    // ----------------------------
+    
     window.location.href = "/";
 }
-
 /**
  * Cerca utenti in base al nome
  */
