@@ -94,6 +94,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		contentType TEXT NOT NULL DEFAULT 'text',
 		timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		replyToMsgId TEXT,
+		status TEXT NOT NULL DEFAULT 'sent',
 		forwardedFromMsgId TEXT, -- AGGIUNGI QUESTA
 		FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE,
 		FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE,
