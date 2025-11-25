@@ -55,8 +55,8 @@ func (db *appdbimpl) SendMessage(senderId string, convId string, content string,
 	newMsgId := "msg-" + uuid.New().String()
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano) // Formato ISO 8601
 
-	_, err = tx.Exec(`INSERT INTO messages (id, conversationId, senderId, content, contentType, timestamp, replyToMsgId) 
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+	_, err = tx.Exec(`INSERT INTO messages (id, conversationId, senderId, content, contentType, timestamp, replyToMsgId, status) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'sent')`,
 		newMsgId, convId, senderId, content, contentType, timestamp, replyToMsgId)
 	if err != nil {
 		return message, fmt.Errorf("error inserting message: %w", err)
@@ -75,12 +75,14 @@ func (db *appdbimpl) SendMessage(senderId string, convId string, content string,
 
 	// Costruisce e restituisce l'oggetto Message completo
 	message = Message{ // components/schemas/Message
-		ID:          newMsgId,
-		Sender:      sender,
-		Content:     content,
-		ContentType: contentType,
-		Timestamp:   timestamp,
-		Reactions:   []Reaction{}, // Appena creato, non ha reazioni
+		ID:           newMsgId,
+		Sender:       sender,
+		Content:      content,
+		ContentType:  contentType,
+		Timestamp:    timestamp,
+		Status:       "sent",       //
+		ReplyToMsgId: replyToMsgId, // (Se non c'era già)
+		Reactions:    []Reaction{},
 	}
 
 	return message, nil

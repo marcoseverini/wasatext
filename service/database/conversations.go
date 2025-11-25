@@ -151,7 +151,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 
 	// --- QUERY MESSAGGI AGGIORNATA ---
 	msgRows, err := db.c.Query(`
-        SELECT m.id, m.content, m.contentType, m.timestamp, m.replyToMsgId,
+        SELECT m.id, m.content, m.contentType, m.timestamp, m.replyToMsgId, m.status,
                u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
         FROM messages m
         JOIN users u ON m.senderId = u.id
@@ -168,9 +168,10 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	for msgRows.Next() {
 		var msg Message
 		var senderPhoto sql.NullString
-		var replyTo sql.NullString // Variabile per gestire il NULL del database
+		var replyTo sql.NullString
 
-		if err := msgRows.Scan(&msg.ID, &msg.Content, &msg.ContentType, &msg.Timestamp, &replyTo,
+		// AGGIUNTO &msg.Status NELLO SCAN (dopo replyTo)
+		if err := msgRows.Scan(&msg.ID, &msg.Content, &msg.ContentType, &msg.Timestamp, &replyTo, &msg.Status,
 			&msg.Sender.ID, &msg.Sender.Username, &senderPhoto); err != nil {
 			return conversation, fmt.Errorf("could not scan message: %w", err)
 		}
