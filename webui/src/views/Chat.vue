@@ -295,9 +295,9 @@ const getRepliedMessage = (replyId) => {
                 
                 <svg v-else-if="msg.status === 'sent' || msg.status === 'received'" class="feather status-icon"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
                 
-                <div v-else-if="msg.status === 'read'" class="d-flex" style="margin-left: -3px;">
+                <div v-else-if="msg.status === 'read'" class="d-flex">
                   <svg class="feather status-icon text-primary"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
-                  <svg class="feather status-icon text-primary" style="margin-left: -10px;"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
+                  <svg class="feather status-icon text-primary overlap-icon"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
                 </div>
               </div>
             </div>
@@ -476,6 +476,12 @@ const getRepliedMessage = (replyId) => {
 /* Colore blu per le spunte di lettura */
 .text-primary {
   color: #0d6efd !important; /* Blu Bootstrap */
+}
+
+/* Sovrapposizione stile WhatsApp */
+.overlap-icon {
+  margin-left: -11px !important; /* Sposta l'icona a sinistra sopra l'altra */
+  margin-top: -1px; /* Opzionale: aggiusta leggermente l'altezza se serve */
 }
 
 </style>
