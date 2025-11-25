@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'; // Aggiunto 'watch'
+import { ref, watch } from 'vue';
 import { apiSetMyUserName, apiSetMyPhoto } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
@@ -7,20 +7,47 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue';
 const props = defineProps({
   show: Boolean,
   username: String,
-  photoUrl: String // <--- NUOVA PROP
+  photoUrl: String 
 });
 
 const emit = defineEmits(['close', 'update-profile']);
 
 const newUsername = ref(props.username);
-const newPhotoUrl = ref(props.photoUrl || ''); // Inizializza con la foto attuale
+const newPhotoUrl = ref(props.photoUrl || ''); 
 const loading = ref(false);
 const errorMsg = ref('');
 const successMsg = ref('');
 
-// Aggiorna i campi se le props cambiano mentre il modale è aperto
+// Watchers
 watch(() => props.username, (val) => newUsername.value = val);
 watch(() => props.photoUrl, (val) => newPhotoUrl.value = val || '');
+
+// --- GESTIONE UPLOAD FILE (BASE64) ---
+const handleFileUpload = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Controllo dimensione (max 1MB circa, dato il limite del backend)
+  if (file.size > 1000000) {
+    errorMsg.value = "L'immagine è troppo grande (max 1MB).";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    // Questo è il "trucco": il file diventa una stringa lunghissima
+    newPhotoUrl.value = e.target.result; 
+  };
+  reader.readAsDataURL(file);
+};
+
+// --- RIMOZIONE FOTO ---
+const removePhoto = () => {
+  newPhotoUrl.value = '';
+  // Resetta anche l'input file se presente nel DOM
+  const fileInput = document.getElementById('fileUploadInput');
+  if (fileInput) fileInput.value = '';
+};
 
 const handleSave = async () => {
   loading.value = true;
@@ -31,21 +58,19 @@ const handleSave = async () => {
     let updatedName = props.username;
     let updatedPhoto = props.photoUrl;
 
-    // 1. Aggiorna Username se cambiato
+    // 1. Aggiorna Username
     if (newUsername.value !== props.username) {
       await apiSetMyUserName(newUsername.value);
       updatedName = newUsername.value;
     }
 
-    // 2. Aggiorna Foto se cambiata
+    // 2. Aggiorna Foto
     if (newPhotoUrl.value !== props.photoUrl) {
       await apiSetMyPhoto(newPhotoUrl.value);
       updatedPhoto = newPhotoUrl.value;
     }
 
     successMsg.value = "Profilo aggiornato con successo!";
-    
-    // Emette entrambi i nuovi valori al padre (App.vue)
     emit('update-profile', { username: updatedName, photoUrl: updatedPhoto });
     
     setTimeout(() => {
@@ -84,14 +109,40 @@ const handleSave = async () => {
           </div>
 
           <div class="mb-4">
-            <label class="form-label fw-bold">URL Foto Profilo</label>
-            <input type="url" class="form-control" v-model="newPhotoUrl" placeholder="https://...">
-            <div class="form-text">Incolla un link a un'immagine. Lascia vuoto per rimuoverla.</div>
-          </div>
-
-          <div v-if="newPhotoUrl" class="text-center mb-3">
-            <label class="form-label small text-muted d-block">Anteprima</label>
-            <img :src="newPhotoUrl" class="rounded-circle border" width="80" height="80" style="object-fit: cover;" alt="Anteprima">
+            <label class="form-label fw-bold">Foto Profilo</label>
+            
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <img 
+                :src="newPhotoUrl || 'https://placehold.co/80x80/e9ecef/6c757d?text=No+Foto'" 
+                class="rounded-circle border" 
+                width="80" height="80" 
+                style="object-fit: cover;" 
+                alt="Anteprima"
+              >
+              
+              <div>
+                <label class="btn btn-outline-primary btn-sm me-2">
+                  Carica Foto...
+                  <input 
+                    id="fileUploadInput"
+                    type="file" 
+                    accept="image/*" 
+                    class="d-none" 
+                    @change="handleFileUpload"
+                  >
+                </label>
+                <button 
+                  v-if="newPhotoUrl" 
+                  type="button" 
+                  class="btn btn-outline-danger btn-sm" 
+                  @click="removePhoto"
+                >
+                  Rimuovi
+                </button>
+              </div>
+            </div>
+            
+            <div class="form-text">Scegli un'immagine dal tuo dispositivo (max 1MB).</div>
           </div>
 
           <button type="submit" class="btn btn-primary w-100" :disabled="loading">
