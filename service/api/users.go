@@ -1,51 +1,50 @@
 package api
 
 import (
-	"encoding/json" // Libreria per codificare/decodificare JSON
-	"net/http"      // Libreria per gestire HTTP
+	"encoding/json"
+	"net/http"
 
-	"github.com/julienschmidt/httprouter"                // Router HTTP di terze parti
-	"github.com/marcoseverini/wasatext/service/database" // Database
+	"github.com/julienschmidt/httprouter"
+	"github.com/marcoseverini/wasatext/service/database"
 )
 
 // GET /users
 func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
-	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	// --- MODIFICA QUI ---
+	// Usiamo '_' invece di 'userID' perché non ci serve più la variabile per filtrare,
+	// ma dobbiamo comunque chiamare la funzione per garantire che l'utente sia autenticato.
+	_, err := rt.getUserIdFromAuth(r)
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	searchQuery := r.URL.Query().Get("username") // components/parameters/SearchUsername
+	searchQuery := r.URL.Query().Get("username")
 
-	// var username Username = Username(searchQuery) // SBAGLIATO
-	var searchTerm SearchQuery = SearchQuery(searchQuery) // GIUSTO
-	if err := searchTerm.Validate(); err != nil {         // GIUSTO
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+	var searchTerm SearchQuery = SearchQuery(searchQuery)
+	if err := searchTerm.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// Esegue la ricerca nel database
-	users, err := rt.db.SearchUsers(string(searchTerm)) // Lista di components/schemas/User
+	users, err := rt.db.SearchUsers(string(searchTerm))
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante la ricerca degli utenti.") // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante la ricerca degli utenti.")
 		return
 	}
 
-	// Filtra l'utente che fa la richiesta dai risultati
-	var filteredUsers []database.User
-	for _, user := range users {
-		if user.ID != userID {
-			filteredUsers = append(filteredUsers, user)
-		}
+	// Se users è nil (nessun risultato), inizializziamo una slice vuota per evitare "null" nel JSON
+	if users == nil {
+		users = []database.User{}
 	}
 
-	response := database.UserList{ // <- NOTA: Qui c'è un'incongruenza
-		Users: filteredUsers,
+	response := database.UserList{
+		Users: users,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200 OK
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(response)
 }
