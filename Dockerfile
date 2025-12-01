@@ -3,6 +3,10 @@
 # -----------------------------------------------------------------------------
 FROM node:20-slim AS frontend-builder
 
+# --- FIX: Abilitiamo Corepack per supportare Yarn 4.5.0 ---
+RUN corepack enable
+# ----------------------------------------------------------
+
 # Impostiamo la cartella di lavoro
 WORKDIR /app/webui
 
@@ -52,7 +56,6 @@ WORKDIR /app
 COPY --from=backend-builder /app/webapi .
 
 # 2. Copiamo la cartella 'dist' compilata dal builder del frontend
-#    La mettiamo esattamente dove il backend si aspetta di trovarla (./webui/dist)
 COPY --from=frontend-builder /app/webui/dist ./webui/dist
 
 # Comando di avvio
