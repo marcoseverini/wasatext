@@ -30,6 +30,7 @@ type _router struct {
 }
 
 // Costruttore del router API
+// Costruttore del router API
 func New(cfg Config) (Router, error) {
 
 	// Validazione delle dipendenze
@@ -45,14 +46,14 @@ func New(cfg Config) (Router, error) {
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
 
-	// Crea l'istanza di _router (rt) salvando le dipendenze (db e logger) al suo interno.
+	// Crea l'istanza di _router (rt) salvando le dipendenze
 	rt := &_router{
 		router:     router,
 		baseLogger: cfg.Logger,
 		db:         cfg.Database,
 	}
 
-	// Rotte HTTP
+	// --- ROTTE API (Backend) ---
 	router.POST("/session", rt.doLogin)
 	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUserName))
 	router.PUT("/settings/photo", rt.authMiddleware(rt.setMyPhoto))
@@ -71,7 +72,30 @@ func New(cfg Config) (Router, error) {
 	router.POST("/conversations/:convId/members", rt.authMiddleware(rt.addToGroup))
 	router.DELETE("/conversations/:convId/members/me", rt.authMiddleware(rt.leaveGroup))
 
-	// Restituisce il router configurato
+	// --- ROTTE STATICHE (Frontend) ---
+	// Queste servono i file generati da 'yarn build' nella cartella webui/dist
+
+	// 1. Serve la Index (Home Page)
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.ServeFile(w, r, "webui/dist/index.html")
+	})
+
+	// 2. Serve i file Javascript e CSS (cartella assets)
+	router.ServeFiles("/assets/*filepath", http.Dir("webui/dist/assets"))
+
+	// 3. Serve Bootstrap (che hai in public/bootstrap e finisce in dist/bootstrap)
+	router.ServeFiles("/bootstrap/*filepath", http.Dir("webui/dist/bootstrap"))
+
+	// 4. Serve l'icona SVG (feather sprite)
+	router.GET("/feather-sprite-v4.29.0.svg", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.ServeFile(w, r, "webui/dist/feather-sprite-v4.29.0.svg")
+	})
+
+	// 5. Serve la Favicon (opzionale)
+	router.GET("/favicon.ico", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		http.ServeFile(w, r, "webui/dist/favicon.ico")
+	})
+
 	return rt, nil
 }
 
