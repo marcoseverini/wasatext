@@ -3,9 +3,8 @@
 # -----------------------------------------------------------------------------
 FROM node:20-slim AS frontend-builder
 
-# --- FIX: Abilitiamo Corepack per supportare Yarn 4.5.0 ---
+# Abilitiamo Corepack per supportare Yarn 4.5.0
 RUN corepack enable
-# ----------------------------------------------------------
 
 # Impostiamo la cartella di lavoro
 WORKDIR /app/webui
@@ -14,7 +13,9 @@ WORKDIR /app/webui
 COPY webui/package.json webui/yarn.lock ./
 
 # Installiamo le dipendenze
-RUN yarn install --frozen-lockfile
+# --- MODIFICA QUI: Rimosso '--frozen-lockfile' per permettere aggiornamenti al lockfile ---
+RUN yarn install
+# -----------------------------------------------------------------------------------------
 
 # Copiamo tutto il codice sorgente del frontend
 COPY webui .
@@ -37,13 +38,11 @@ COPY service/ service/
 COPY cmd/ cmd/
 
 # Compiliamo il backend
-# CGO_ENABLED=1 serve perché usiamo go-sqlite3
 RUN CGO_ENABLED=1 GOOS=linux go build -o webapi ./cmd/webapi
 
 # -----------------------------------------------------------------------------
 # STAGE 3: Immagine Finale (Runtime)
 # -----------------------------------------------------------------------------
-# Usiamo un'immagine Debian leggera (necessaria per SQLite/CGO)
 FROM debian:bookworm-slim
 
 # Esponiamo la porta del server
