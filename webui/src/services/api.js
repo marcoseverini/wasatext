@@ -1,5 +1,6 @@
-// Leggiamo l'URL del backend dal file .env (Vite lo inietta qui)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Se la variabile d'ambiente c'è, usala. Altrimenti usa il backend locale standard.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 /*
  * Una funzione "wrapper" per 'fetch' che gestisce la logica del token
