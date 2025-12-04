@@ -474,14 +474,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:0.28.0":
-  version: 0.28.0
-  resolution: "axios@npm:0.28.0"
+"axios@npm:^1.13.2":
+  version: 1.13.2
+  resolution: "axios@npm:1.13.2"
   dependencies:
-    follow-redirects: "npm:^1.15.0"
-    form-data: "npm:^4.0.0"
+    follow-redirects: "npm:^1.15.6"
+    form-data: "npm:^4.0.4"
     proxy-from-env: "npm:^1.1.0"
-  checksum: 10/3bc408a75530cdccfa2537a8713f66d4b84cb1d93a31b59c0f1a247ffce955d8a739862365135b687bcef83763b8c3a42330dc3628b406c9ffca320bce608f0a
+  checksum: 10/ae4e06dcd18289f2fd18179256d550d27f9a53ecb2f9c59f2ccc4efd1d7151839ba8c3e0fb533dac793e4a59a576ca8689a19244dce5c396680837674a47a867
   languageName: node
   linkType: hard
 
@@ -1215,7 +1215,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"follow-redirects@npm:^1.15.0":
+"follow-redirects@npm:^1.15.6":
   version: 1.15.11
   resolution: "follow-redirects@npm:1.15.11"
   peerDependenciesMeta:
@@ -1235,7 +1235,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"form-data@npm:^4.0.0":
+"form-data@npm:^4.0.4":
   version: 4.0.5
   resolution: "form-data@npm:4.0.5"
   dependencies:
@@ -2203,7 +2203,7 @@ __metadata:
   resolution: "teapot@workspace:."
   dependencies:
     "@vitejs/plugin-vue": "npm:^3.0.1"
-    axios: "npm:0.28.0"
+    axios: "npm:^1.13.2"
     bootstrap: "npm:^5.3.8"
     eslint: "npm:^9.2.0"
     eslint-plugin-vue: "npm:^9.25.0"

@@ -1,247 +1,139 @@
+import axios from "./axios";
 
-// Se la variabile d'ambiente c'è, usala. Altrimenti usa il backend locale standard.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
-/*
- * Una funzione "wrapper" per 'fetch' che gestisce la logica del token
- * e imposta gli header corretti per noi.
- */
-async function apiFetch(endpoint, options = {}) {
-    // Prepara gli header
-    const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers,
-    };
-
-    // Leggi il token salvato dal localStorage
-    const token = localStorage.getItem('sessionToken');
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // Costruisci la richiesta
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers: headers,
-    });
-
-    // Se la risposta è 401 (token non valido/scaduto),
-    // cancella il token e ricarica la pagina (che forzerà il login)
-    if (response.status === 401) {
-        localStorage.removeItem('sessionToken');
-        window.location.reload();
-        throw new Error("Sessione scaduta. Effettua nuovamente il login.");
-    }
-
-    // Se c'è un errore (status non 2xx), lancia un'eccezione
-    if (!response.ok) {
-        let errorData;
-        try {
-            errorData = await response.json();
-        } catch (e) {
-            errorData = {};
+// Interceptor: Aggiunge il token a ogni richiesta (se presente)
+axios.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('sessionToken');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
         }
-        throw new Error(errorData.message || 'Si è verificato un errore: ' + response.statusText);
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Interceptor: Gestisce errori globali (es. 401 Logout)
+axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('sessionToken');
+            localStorage.removeItem('username');
+            localStorage.removeItem('photoUrl');
+            window.location.href = "/";
+        }
+        // Ritorna il messaggio di errore del server se presente, altrimenti quello generico
+        const msg = error.response?.data?.message || error.message;
+        return Promise.reject(new Error(msg));
     }
+);
 
-    // Se è 204 No Content, ritorna null
-    if (response.status === 204) {
-        return null;
-    }
-    
-    // Altrimenti ritorna il JSON
-    return response.json();
-}
+// --- FUNZIONI API (Convertite a Axios) ---
 
-// --- Definizioni delle nostre funzioni API ---
-
-/**
- * Esegue il login e salva il token
- */
 export async function apiLogin(username) {
-    const response = await apiFetch('/session', {
-        method: 'POST',
-        body: JSON.stringify({ username: username }), 
-    });
+    // axios.post restituisce un oggetto response, i dati sono in response.data
+    const response = await axios.post('/session', { username });
     
-    if (response.identifier) {
-        localStorage.setItem('sessionToken', response.identifier);
-        
-        // --- QUESTA RIGA È FONDAMENTALE ---
-        localStorage.setItem('username', username); 
-        // ----------------------------------
-
+    if (response.data.identifier) {
+        localStorage.setItem('sessionToken', response.data.identifier);
+        localStorage.setItem('username', username);
         localStorage.removeItem('photoUrl');
     }
-    return response;
+    return response.data;
 }
 
-/**
- * Ottiene la lista delle conversazioni
- */
-export async function apiGetMyConversations() {
-    return apiFetch('/conversations'); 
-}
-
-/**
- * Funzione di Logout
- */
 export function apiLogout() {
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('username');
-    
-    // --- AGGIUNGI QUESTA RIGA ---
-    localStorage.removeItem('photoUrl'); 
-    // ----------------------------
-    
+    localStorage.removeItem('photoUrl');
     window.location.href = "/";
 }
-/**
- * Cerca utenti in base al nome
- */
+
+export async function apiGetMyConversations() {
+    const response = await axios.get('/conversations');
+    return response.data;
+}
+
 export async function apiSearchUsers(username) {
-  return apiFetch(`/users?username=${encodeURIComponent(username)}`);
+    const response = await axios.get('/users', {
+        params: { username }
+    });
+    return response.data;
 }
 
-/**
- * Inizia una nuova conversazione 1-a-1
- */
 export async function apiStartConversation(userId) {
-  return apiFetch('/conversations', {
-    method: 'POST',
-    body: JSON.stringify({ userId: userId }),
-  });
+    const response = await axios.post('/conversations', { userId });
+    return response.data;
 }
 
-/**
- * Ottiene i dettagli completi di una singola conversazione
- */
 export async function apiGetConversation(conversationId) {
-  return apiFetch(`/conversations/${conversationId}`);
+    const response = await axios.get(`/conversations/${conversationId}`);
+    return response.data;
 }
 
-/**
- * Invia un messaggio (Testo O Foto)
- * - Se 'content' è testo, passa type='text' (default)
- * - Se 'content' è un'immagine Base64, passa type='photo'
- */
+// Invia messaggio (Testo o Foto)
 export async function apiSendMessage(conversationId, content, type = 'text', replyToMsgId = null) {
-  const payload = {};
-  
-  if (replyToMsgId) {
-    payload.replyToMsgId = replyToMsgId;
-  }
+    const payload = {};
+    if (replyToMsgId) payload.replyToMsgId = replyToMsgId;
 
-  if (type === 'text') {
-    payload.text = content;
-  } else if (type === 'photo') {
-    payload.photoUrl = content;
-  }
+    if (type === 'text') payload.text = content;
+    else if (type === 'photo') payload.photoUrl = content;
 
-  return apiFetch(`/conversations/${conversationId}/messages`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+    const response = await axios.post(`/conversations/${conversationId}/messages`, payload);
+    return response.data;
 }
 
-/**
- * Crea un nuovo gruppo
- */
 export async function apiCreateGroup(groupName, memberIds) {
-  return apiFetch('/groups', {
-    method: 'POST',
-    body: JSON.stringify({
-      groupName: groupName,
-      memberIds: memberIds,
-    }),
-  });
+    const response = await axios.post('/groups', { groupName, memberIds });
+    return response.data;
 }
 
-/**
- * Cancella un messaggio
- */
 export async function apiDeleteMessage(messageId) {
-  return apiFetch(`/messages/${messageId}`, {
-    method: 'DELETE',
-  });
+    const response = await axios.delete(`/messages/${messageId}`);
+    return response.data;
 }
 
-/**
- * Aggiunge una reazione a un messaggio (CORRETTA)
- */
 export async function apiAddReaction(msgId, emoji) {
-    return apiFetch(`/messages/${msgId}/reactions`, {
-        method: 'POST',
-        body: JSON.stringify({ emoji: emoji })
-    });
+    const response = await axios.post(`/messages/${msgId}/reactions`, { emoji });
+    return response.data;
 }
 
-/**
- * Rimuove una reazione (CORRETTA)
- */
 export async function apiRemoveReaction(msgId, reactionId) {
-    return apiFetch(`/messages/${msgId}/reactions/${reactionId}`, {
-        method: 'DELETE'
-    });
+    const response = await axios.delete(`/messages/${msgId}/reactions/${reactionId}`);
+    return response.data;
 }
 
-// Aggiorna il nome del gruppo
 export async function apiSetGroupName(convId, name) {
-    return apiFetch(`/conversations/${convId}/name`, {
-        method: 'PUT',
-        body: JSON.stringify({ name })
-    });
+    const response = await axios.put(`/conversations/${convId}/name`, { name });
+    return response.data;
 }
 
-// Aggiunge un utente a un gruppo esistente
 export async function apiAddToGroup(convId, userId) {
-    // POST /conversations/{convId}/members
-    return apiFetch(`/conversations/${convId}/members`, {
-        method: 'POST',
-        body: JSON.stringify({ userId })
-    });
+    const response = await axios.post(`/conversations/${convId}/members`, { userId });
+    return response.data;
 }
 
-// Abbandona il gruppo
 export async function apiLeaveGroup(convId) {
-    // DELETE /conversations/{convId}/members/me
-    return apiFetch(`/conversations/${convId}/members/me`, {
-        method: 'DELETE'
-    });
+    const response = await axios.delete(`/conversations/${convId}/members/me`);
+    return response.data;
 }
 
-// Imposta il proprio username
 export async function apiSetMyUserName(username) {
-    // PUT /settings/username
-    return apiFetch('/settings/username', {
-        method: 'PUT',
-        body: JSON.stringify({ username })
-    });
+    const response = await axios.put('/settings/username', { username });
+    return response.data;
 }
 
-// Imposta la propria foto profilo
 export async function apiSetMyPhoto(photoUrl) {
-    // PUT /settings/photo
-    return apiFetch('/settings/photo', {
-        method: 'PUT',
-        body: JSON.stringify({ photoUrl })
-    });
+    const response = await axios.put('/settings/photo', { photoUrl });
+    return response.data;
 }
 
-// Imposta la foto del gruppo
 export async function apiSetGroupPhoto(convId, photoUrl) {
-    // PUT /conversations/{convId}/photo
-    return apiFetch(`/conversations/${convId}/photo`, {
-        method: 'PUT',
-        body: JSON.stringify({ photoUrl })
-    });
+    const response = await axios.put(`/conversations/${convId}/photo`, { photoUrl });
+    return response.data;
 }
 
-// Inoltra un messaggio in un'altra conversazione
 export async function apiForwardMessage(targetConvId, originalMsgId) {
-    // POST /conversations/{convId}/forwarded_messages
-    return apiFetch(`/conversations/${targetConvId}/forwarded_messages`, {
-        method: 'POST',
-        body: JSON.stringify({ originalMessageId: originalMsgId })
-    });
+    const response = await axios.post(`/conversations/${targetConvId}/forwarded_messages`, { originalMessageId: originalMsgId });
+    return response.data;
 }

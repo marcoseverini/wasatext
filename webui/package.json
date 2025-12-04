@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "scripts": {
         "dev": "yarn install --immutable --immutable-cache && vite",
-        "build": "vite build",  
+        "build": "vite build",
         "build-dev": "yarn install --immutable --immutable-cache && vite build --mode development",
         "build-prod": "yarn install --immutable --immutable-cache && vite build --mode production",
         "build-embed": "yarn install --immutable --immutable-cache && vite build --mode production --base=/dashboard/",
@@ -11,7 +11,7 @@
         "lint": "node node_modules/eslint/bin/eslint.js ."
     },
     "dependencies": {
-        "axios": "0.28.0",
+        "axios": "^1.13.2",
         "bootstrap": "^5.3.8",
         "vue": "^3.2.37",
         "vue-router": "^4.6.3"
