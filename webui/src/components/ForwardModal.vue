@@ -21,6 +21,7 @@ const searchResults = ref([]);
 const searchQuery = ref('');
 const loading = ref(false);
 const sendingToId = ref(null); 
+const hasSearched = ref(false); // NUOVO: Traccia se abbiamo premuto "Cerca"
 
 onMounted(async () => {
   try {
@@ -36,8 +37,11 @@ onMounted(async () => {
 
 const handleSearch = async () => {
   if (searchQuery.value.trim().length < 2) return;
+  
   loading.value = true;
+  hasSearched.value = true; // ORA diciamo che la ricerca è stata fatta
   searchResults.value = [];
+  
   try {
     const data = await apiSearchUsers(searchQuery.value);
     searchResults.value = data.users || [];
@@ -49,7 +53,6 @@ const handleSearch = async () => {
 };
 
 const handleForward = async (item, isSearchResult) => {
-  // Controlliamo se c'è qualcosa da inoltrare
   if (!props.text && !props.photo) return;
   
   sendingToId.value = item.id;
@@ -58,11 +61,12 @@ const handleForward = async (item, isSearchResult) => {
     let targetConvId = item.id;
 
     if (isSearchResult) {
+      // Se è un utente dalla ricerca, recuperiamo/creiamo la conversazione
       const convData = await apiStartConversation(item.id);
       targetConvId = convData.id;
     }
 
-    // Usiamo apiSendMessage con la nuova firma (text, photo)
+    // Inviamo il messaggio (testo + foto)
     await apiSendMessage(targetConvId, props.text, props.photo);
     
     alert("Messaggio inoltrato!");
@@ -128,7 +132,7 @@ const handleForward = async (item, isSearchResult) => {
               </div>
             </div>
             
-            <div v-else-if="searchQuery.length >= 2 && searchResults.length === 0" class="text-center text-muted mt-3">
+            <div v-else-if="hasSearched && searchResults.length === 0" class="text-center text-muted mt-3">
               Nessun utente trovato.
             </div>
 
@@ -155,7 +159,7 @@ const handleForward = async (item, isSearchResult) => {
               </div>
             </div>
 
-            <div v-if="recentConversations.length === 0 && searchResults.length === 0" class="text-center p-4 text-muted">
+            <div v-if="recentConversations.length === 0 && searchResults.length === 0 && !hasSearched" class="text-center p-4 text-muted">
               Cerca un utente per iniziare.
             </div>
 
