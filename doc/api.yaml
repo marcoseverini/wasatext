@@ -602,6 +602,7 @@ components:
       required: ["id", "name"]
 
     Conversation:
+      description: Rappresenta i dettagli completi di una singola conversazione, inclusi membri e messaggi.
       type: object
       properties:
         id:
@@ -612,12 +613,25 @@ components:
           $ref: '#/components/schemas/PhotoURL'
         isGroup:
           type: boolean
+          description: Indica se si tratta di una conversazione di gruppo (`true`) o 1-1 (`false`).
+          example: true
+        latestMessageSnippet:  # <--- AGGIUNTO
+          type: string
+          description: Anteprima dell'ultimo messaggio.
+        latestMessageTimestamp: # <--- AGGIUNTO
+          $ref: '#/components/schemas/Timestamp'
         members:
           type: array
+          description: Lista degli utenti membri della conversazione.
+          minItems: 1 
+          maxItems: 100 
           items:
             $ref: '#/components/schemas/User'
         messages:
           type: array
+          description: Lista dei messaggi scambiati nella conversazione (ordinati dal più recente al meno recente).
+          minItems: 0
+          maxItems: 1000
           items:
             $ref: '#/components/schemas/Message'
       required: ["id", "name", "isGroup", "members", "messages"]

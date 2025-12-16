@@ -128,7 +128,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	}
 	conversation.Members = members
 
-	// 5. Recupera Messaggi (AGGIORNATO: usa text e photoUrl)
+	// 5. Recupera Messaggi
 	msgRows, err := db.c.Query(`
         SELECT m.id, COALESCE(m.text, ''), COALESCE(m.photoUrl, ''), m.timestamp, m.replyToMsgId, m.status,
                u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
@@ -149,7 +149,6 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		var senderPhoto sql.NullString
 		var replyTo sql.NullString
 
-		// Nota: Scannerizziamo su msg.Text e msg.PhotoURL invece di msg.Content
 		if err := msgRows.Scan(&msg.ID, &msg.Text, &msg.PhotoURL, &msg.Timestamp, &replyTo, &msg.Status,
 			&msg.Sender.ID, &msg.Sender.Username, &senderPhoto); err != nil {
 			return conversation, fmt.Errorf("could not scan message: %w", err)
@@ -208,6 +207,18 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	if conversation.Messages == nil {
 		conversation.Messages = []Message{}
 	}
+
+	// --- AGGIUNTO: Popoliamo i campi Snippet e Timestamp per coerenza con l'API ---
+	if len(messages) > 0 {
+		lastMsg := messages[0]
+		conversation.LatestMessageTimestamp = lastMsg.Timestamp
+		if lastMsg.Text != "" {
+			conversation.LatestMessageSnippet = lastMsg.Text
+		} else if lastMsg.PhotoURL != "" {
+			conversation.LatestMessageSnippet = "📷 [Foto]"
+		}
+	}
+	// -------------------------------------------------------------------------------
 
 	return conversation, nil
 }

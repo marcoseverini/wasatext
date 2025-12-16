@@ -14,13 +14,16 @@ type ConversationSummary struct {
 	LatestMessageTimestamp string `json:"latestMessageTimestamp,omitempty"`
 }
 
+// components/schemas/Conversation
 type Conversation struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	PhotoURL string    `json:"photoUrl,omitempty"`
-	IsGroup  bool      `json:"isGroup"`
-	Members  []User    `json:"members"`
-	Messages []Message `json:"messages"`
+	ID                     string    `json:"id"`
+	Name                   string    `json:"name"`
+	PhotoURL               string    `json:"photoUrl,omitempty"`
+	IsGroup                bool      `json:"isGroup"`
+	LatestMessageSnippet   string    `json:"latestMessageSnippet,omitempty"`   // <--- AGGIUNTO
+	LatestMessageTimestamp string    `json:"latestMessageTimestamp,omitempty"` // <--- AGGIUNTO
+	Members                []User    `json:"members"`
+	Messages               []Message `json:"messages"`
 }
 
 // Struttura Messaggio AGGIORNATA
