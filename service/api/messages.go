@@ -1,257 +1,235 @@
 package api
 
 import (
-	"database/sql"  // Libreria per gestire SQL
-	"encoding/json" // Libreria per codificare/decodificare JSON
-	"errors"        // Libreria per gestire gli errori
-	"net/http"      // Libreria per gestire HTTP
-	"reflect"       //
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"reflect"
 
-	"github.com/julienschmidt/httprouter"                // Router HTTP di terze parti
-	"github.com/marcoseverini/wasatext/service/database" // Database
+	"github.com/julienschmidt/httprouter"
+	"github.com/marcoseverini/wasatext/service/database"
 )
 
 // POST /conversations/{convId}/messages
 func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	userID, err := rt.getUserIdFromAuth(r)
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	var convId InternalID = InternalID(ps.ByName("convId")) // components/parameters/ConvId
+	var convId InternalID = InternalID(ps.ByName("convId"))
 	if err := convId.Validate(); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	var req SendMessageRequest // components/schemas/SendMessageRequest
+	var req SendMessageRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	var content string
-	var contentType string
-
+	// Validazione: Almeno uno dei due (Text o Photo) deve esserci
 	hasText := req.Text != nil && !reflect.ValueOf(req.Text).IsNil()
 	hasPhoto := req.PhotoURL != nil && !reflect.ValueOf(req.PhotoURL).IsNil()
 
 	if !hasText && !hasPhoto {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "Messaggio vuoto. 'text' o 'photoUrl' è richiesto.") // 400 Bad Request
-		return
-	}
-	if hasText && hasPhoto {
-		rt.sendErrorResponse(w, http.StatusBadRequest, "Non puoi inviare 'text' e 'photoUrl' contemporaneamente.") // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, "Messaggio vuoto. Inserire testo o foto.")
 		return
 	}
 
+	// Recuperiamo i valori
+	var textContent string
 	if hasText {
 		if err := req.Text.Validate(); err != nil {
-			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		content = string(*req.Text)
-		contentType = "text"
-	} else {
+		textContent = string(*req.Text)
+	}
+
+	var photoUrlContent string
+	if hasPhoto {
 		if err := req.PhotoURL.Validate(); err != nil {
-			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		content = string(*req.PhotoURL)
-		contentType = "photo"
+		photoUrlContent = string(*req.PhotoURL)
 	}
 
 	var replyTo *string
 	if req.ReplyToMsgId != "" {
 		if err := req.ReplyToMsgId.Validate(); err != nil {
-			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+			rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		replyToString := string(req.ReplyToMsgId)
 		replyTo = &replyToString
 	}
 
-	newMessage, err := rt.db.SendMessage(userID, string(convId), content, contentType, replyTo) // components/schemas/Message
+	// Chiamata al DB aggiornata
+	newMessage, err := rt.db.SendMessage(userID, string(convId), textContent, photoUrlContent, replyTo)
 	if err != nil {
 		if errors.Is(err, database.ErrForbidden) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questa conversazione.") // 403 Forbidden
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro di questa conversazione.")
 			return
 		}
 		if errors.Is(err, database.ErrBadRequest) {
-			rt.sendErrorResponse(w, http.StatusBadRequest, "Messaggio a cui rispondere non valido o non trovato.") // 400 Bad Request
+			rt.sendErrorResponse(w, http.StatusBadRequest, "Messaggio a cui rispondere non valido.")
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201 Created
+	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(newMessage)
 }
 
-// POST /conversations/{convId}/forwarded_messages
+// ... (le altre funzioni forwardMessage, deleteMessage, commentMessage rimangono uguali,
+// a parte forwardMessage che userà la nuova struttura DB internamente, vedi db_messages.go)
+
 func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	// ... Implementazione standard di forwardMessage (invariata nel controller, ma il DB cambia sotto)
+	// Copio per completezza se vuoi sovrascrivere tutto il file
+	userID, err := rt.getUserIdFromAuth(r)
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	var convId InternalID = InternalID(ps.ByName("convId")) // components/parameters/ConvId
+	var convId InternalID = InternalID(ps.ByName("convId"))
 	if err := convId.Validate(); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	var req ForwardMessageRequest // components/schemas/ForwardMessageRequest
+	var req ForwardMessageRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
 	if err := req.OriginalMessageId.Validate(); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	forwardedMessage, err := rt.db.ForwardMessage(userID, string(convId), string(req.OriginalMessageId)) // components/schemas/Message
+	forwardedMessage, err := rt.db.ForwardMessage(userID, string(convId), string(req.OriginalMessageId))
 	if err != nil {
 		if errors.Is(err, database.ErrForbidden) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro della conversazione di destinazione.") // 403 Forbidden
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei membro della conversazione di destinazione.")
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Messaggio originale non trovato o accesso negato.") // 404 Not Found
+			rt.sendErrorResponse(w, http.StatusNotFound, "Messaggio originale non trovato.")
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'inoltro del messaggio.") // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore inoltro.")
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201 Created
+	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(forwardedMessage)
 }
 
-// DELETE /messages/{msgId}
 func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	userID, err := rt.getUserIdFromAuth(r)
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	var msgId InternalID = InternalID(ps.ByName("msgId")) // components/parameters/MsgID
+	var msgId InternalID = InternalID(ps.ByName("msgId"))
 	if err := msgId.Validate(); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// Chiama il database per eliminare
 	err = rt.db.DeleteMessage(userID, string(msgId))
 	if err != nil {
 		if errors.Is(err, database.ErrForbidden) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei il mittente di questo messaggio.") // 403 Forbidden
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei il mittente.")
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Messaggio non trovato.") // 404 Not Found
+			rt.sendErrorResponse(w, http.StatusNotFound, "Messaggio non trovato.")
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'eliminazione del messaggio.") // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore eliminazione.")
 		return
 	}
-
-	w.WriteHeader(http.StatusNoContent) // 204 No Content
+	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /messages/{msgId}/reactions
 func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	userID, err := rt.getUserIdFromAuth(r)
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	var msgId InternalID = InternalID(ps.ByName("msgId")) // components/parameters/MsgID
+	var msgId InternalID = InternalID(ps.ByName("msgId"))
 	if err := msgId.Validate(); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	var req CommentMessageRequest // components/schemas/CommentMessageRequest
+	var req CommentMessageRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	if err := req.Emoji.Validate(); err != nil { // components/schemas/Reaction
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+	if err := req.Emoji.Validate(); err != nil {
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
 	reaction, err := rt.db.AddReaction(userID, string(msgId), string(req.Emoji))
 	if err != nil {
 		if errors.Is(err, database.ErrForbidden) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non puoi reagire a questo messaggio (non sei membro).") // 403 Forbidden
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non puoi reagire.")
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Messaggio non trovato.") // 404 Not Found
+			rt.sendErrorResponse(w, http.StatusNotFound, "Messaggio non trovato.")
 			return
 		}
 		if errors.Is(err, database.ErrBadRequest) {
-			rt.sendErrorResponse(w, http.StatusBadRequest, "Emoji non valida.") // 400 Bad Request
+			rt.sendErrorResponse(w, http.StatusBadRequest, "Emoji non valida.")
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore durante l'aggiunta della reazione.") // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, "Errore aggiunta reazione.")
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201 Created
+	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(reaction)
 }
 
-// DELETE /messages/{msgId}/reactions/{reactionId}
 func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	userID, err := rt.getUserIdFromAuth(r) // Autenticazione
+	userID, err := rt.getUserIdFromAuth(r)
 	if err != nil {
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	var msgId InternalID = InternalID(ps.ByName("msgId")) // components/parameters/MsgID
+	var msgId InternalID = InternalID(ps.ByName("msgId"))
 	if err := msgId.Validate(); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	var reactionId InternalID = InternalID(ps.ByName("reactionId")) // components/parameters/ReactionID
+	var reactionId InternalID = InternalID(ps.ByName("reactionId"))
 	if err := reactionId.Validate(); err != nil {
-		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error()) // 400 Bad Request
+		rt.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
 	err = rt.db.RemoveReaction(userID, string(reactionId), string(msgId))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			rt.sendErrorResponse(w, http.StatusNotFound, "Reazione non trovata.") // 404 Not Found
+			rt.sendErrorResponse(w, http.StatusNotFound, "Reazione non trovata.")
 			return
 		}
 		if errors.Is(err, database.ErrForbidden) {
-			rt.sendErrorResponse(w, http.StatusForbidden, "Non sei il proprietario di questa reazione.") // 403 Forbidden
+			rt.sendErrorResponse(w, http.StatusForbidden, "Non tua reazione.")
 			return
 		}
-		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error()) // 500 Internal Server Error
+		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	w.WriteHeader(http.StatusNoContent) // 204 No Content
+	w.WriteHeader(http.StatusNoContent)
 }

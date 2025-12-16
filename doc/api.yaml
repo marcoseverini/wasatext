@@ -22,8 +22,8 @@ tags:
   - name: "messages"
     description: "Operazioni relative all'invio e gestione dei messaggi."
 
-security: # Regole di sicurezza globali
-  - bearerAuth: [] # Definito in components/securitySchemes/bearerAuth
+security:
+  - bearerAuth: [] 
 
 paths:
 
@@ -31,13 +31,9 @@ paths:
     post:
       tags: ["login"] 
       summary: Logs in the user
-      description: |-
-        Se l'utente esiste, viene restituito il suo identificativo.
-        Se l'utente non esiste, viene creato e viene restituito il suo identificativo.
       operationId: doLogin
-      security: [] # Nessuna autenticazione richiesta per il login
+      security: []
       requestBody:
-        description: Dettagli dell'utente per il login/registrazione.
         required: true
         content:
           application/json:
@@ -45,7 +41,7 @@ paths:
               $ref: '#/components/schemas/DoLoginRequest'
       responses:
         '201': 
-          description: Azione di login/registrazione avvenuta con successo.
+          description: Login successo.
           content:
             application/json:
               schema:
@@ -59,10 +55,8 @@ paths:
     put:
       tags: ["settings"] 
       summary: Set my username
-      description: Aggiorna il nome utente dell'utente autenticato.
       operationId: setMyUserName
       requestBody:
-        description: Il nuovo username desiderato.
         required: true
         content:
           application/json:
@@ -70,7 +64,7 @@ paths:
               $ref: '#/components/schemas/SetMyUserNameRequest'
       responses:
         '200':
-          description: Username aggiornato con successo.
+          description: OK
           content:
             application/json:
               schema:
@@ -88,10 +82,8 @@ paths:
     put:
       tags: ["settings"] 
       summary: Set my profile photo
-      description: Aggiorna l'URL della foto profilo dell'utente autenticato.
       operationId: setMyPhoto
       requestBody:
-        description: Il nuovo URL della foto profilo.
         required: true
         content:
           application/json:
@@ -99,7 +91,7 @@ paths:
               $ref: '#/components/schemas/SetPhotoRequest'
       responses:
         '200':
-          description: Foto aggiornata con successo.
+          description: OK
           content:
             application/json:
               schema:
@@ -115,13 +107,12 @@ paths:
     get:
       tags: ["users"] 
       summary: Search users
-      description: Cerca utenti in base a una parte del loro username.
       operationId: searchUsers 
       parameters:
         - $ref: '#/components/parameters/SearchUsername'
       responses:
         '200':
-          description: Lista di utenti che corrispondono alla ricerca. Può essere vuota.
+          description: OK
           content:
             application/json:
               schema:
@@ -137,12 +128,8 @@ paths:
     post:
       tags: ["conversations"] 
       summary: Start a new conversation
-      description: |-
-        Inizia una nuova conversazione con un altro utente specificato tramite il suo ID. 
-        Se la conversazione esiste già, viene restituita quella esistente.
       operationId: startConversation
       requestBody:
-        description: L'ID dell'utente con cui iniziare la chat.
         required: true
         content:
           application/json:
@@ -150,7 +137,7 @@ paths:
               $ref: '#/components/schemas/UserIdRequest'
       responses:
         '201':
-          description: Conversazione creata o già esistente recuperata con successo.
+          description: Created
           content:
             application/json:
               schema:
@@ -167,11 +154,10 @@ paths:
     get:
       tags: ["conversations"] 
       summary: Get my conversations
-      description: Ritorna la lista delle conversazioni dell'utente autenticato, ordinate per data/ora dell'ultimo messaggio dalla più recente.
       operationId: getMyConversations
       responses:
         '200':
-          description: Una lista di anteprime delle conversazioni.
+          description: OK
           content:
             application/json:
               schema:
@@ -185,10 +171,8 @@ paths:
     post:
       tags: ["groups"]
       summary: Create a new group
-      description: Crea una nuova conversazione di gruppo includendo l'utente autenticato e gli utenti specificati.
       operationId: createGroup 
       requestBody:
-        description: Nome del gruppo e lista degli ID dei membri da includere (oltre all'utente autenticato).
         required: true
         content:
           application/json:
@@ -196,7 +180,7 @@ paths:
               $ref: '#/components/schemas/CreateGroupRequest'
       responses:
         '201':
-          description: Gruppo creato con successo.
+          description: Created
           content:
             application/json:
               schema:
@@ -212,13 +196,12 @@ paths:
     get:
       tags: ["conversations"]
       summary: Get a single conversation
-      description: Ritorna i dettagli completi (inclusi tutti i messaggi in ordine cronologico inverso) di una singola conversazione di cui l'utente autenticato è membro.
       operationId: getConversation
       parameters:
         - $ref: '#/components/parameters/ConvID'
       responses:
         '200':
-          description: Dettagli e messaggi della conversazione richiesti.
+          description: OK
           content:
             application/json:
               schema:
@@ -238,12 +221,11 @@ paths:
     post:
       tags: ["messages"]
       summary: Send a new message
-      description: Invia un nuovo messaggio (testo o URL foto) in una conversazione specificata, a cui l'utente autenticato appartiene. Può opzionalmente essere una risposta a un messaggio esistente.
+      description: Invia un messaggio che può contenere testo, foto o entrambi.
       operationId: sendMessage
       parameters:
         - $ref: '#/components/parameters/ConvID'
       requestBody:
-        description: Contenuto del messaggio (testo o URL foto) e ID opzionale del messaggio a cui rispondere.
         required: true
         content:
           application/json:
@@ -251,7 +233,7 @@ paths:
               $ref: '#/components/schemas/SendMessageRequest' 
       responses:
         '201':
-          description: Messaggio inviato con successo. Restituisce il messaggio creato.
+          description: Created
           content:
             application/json:
               schema:
@@ -271,12 +253,10 @@ paths:
     post:
       tags: ["messages"]
       summary: Forward a message
-      description: Inoltra un messaggio esistente (identificato dal suo ID) in una conversazione specificata, a cui l'utente autenticato appartiene.
       operationId: forwardMessage
       parameters:
         - $ref: '#/components/parameters/ConvID'
       requestBody:
-        description: L'ID del messaggio originale da inoltrare.
         required: true
         content:
           application/json:
@@ -284,7 +264,7 @@ paths:
               $ref: '#/components/schemas/ForwardMessageRequest'
       responses:
         '201':
-          description: Messaggio inoltrato con successo. Restituisce il nuovo messaggio creato (l'inoltro).
+          description: Created
           content:
             application/json:
               schema:
@@ -304,13 +284,12 @@ paths:
     delete:
       tags: ["messages"] 
       summary: Delete a message
-      description: Cancella un messaggio inviato dall'utente autenticato. 
       operationId: deleteMessage
       parameters:
         - $ref: '#/components/parameters/MsgID'
       responses:
         '204':
-          description: Messaggio cancellato con successo. Nessun contenuto restituito.
+          description: Deleted
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -326,15 +305,10 @@ paths:
     post:
       tags: ["messages"]
       summary: React to a message
-      description: >-
-        Aggiunge o aggiorna una reazione (emoji) a un messaggio specificato.
-        Ogni utente può avere al massimo una reazione per messaggio.
-        Se l'utente ha già reagito (anche con un'emoji diversa), la vecchia reazione verrà sostituita dalla nuova.
       operationId: commentMessage
       parameters:
         - $ref: '#/components/parameters/MsgID'
       requestBody:
-        description: L'emoji della reazione.
         required: true
         content:
           application/json:
@@ -342,7 +316,7 @@ paths:
               $ref: '#/components/schemas/CommentMessageRequest' 
       responses:
         '201':
-          description: Reazione aggiunta/aggiornata con successo. Restituisce la reazione creata/aggiornata.
+          description: Created
           content:
             application/json:
               schema:
@@ -360,14 +334,13 @@ paths:
     delete:
       tags: ["messages"]
       summary: Remove a reaction
-      description: Rimuove una reazione (identificata dal suo ID) da un messaggio specificato. L'operazione è permessa solo all'utente che ha creato quella reazione.
       operationId: uncommentMessage
       parameters:
         - $ref: '#/components/parameters/MsgID'
         - $ref: '#/components/parameters/ReactionID'
       responses:
         '204':
-          description: Reazione rimossa con successo. Nessun contenuto restituito.
+          description: Deleted
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -383,12 +356,10 @@ paths:
     put:
       tags: ["groups"]
       summary: Set group name
-      description: Aggiorna il nome di una conversazione di gruppo specificata. L'utente autenticato deve essere membro del gruppo.
       operationId: setGroupName
       parameters:
         - $ref: '#/components/parameters/ConvID'
       requestBody:
-        description: Il nuovo nome desiderato per il gruppo.
         required: true
         content:
           application/json:
@@ -396,7 +367,7 @@ paths:
               $ref: '#/components/schemas/SetGroupNameRequest'
       responses:
         '200':
-          description: Nome del gruppo aggiornato con successo. Restituisce la conversazione aggiornata.
+          description: Updated
           content:
             application/json:
               schema:
@@ -416,12 +387,10 @@ paths:
     put:
       tags: ["groups"]
       summary: Set group photo
-      description: Aggiorna l'URL della foto di una conversazione di gruppo specificata. L'utente autenticato deve essere membro del gruppo.
       operationId: setGroupPhoto
       parameters:
         - $ref: '#/components/parameters/ConvID'
       requestBody:
-        description: Il nuovo URL della foto del gruppo.
         required: true
         content:
           application/json:
@@ -429,7 +398,7 @@ paths:
               $ref: '#/components/schemas/SetPhotoRequest'
       responses:
         '200':
-          description: Foto del gruppo aggiornata con successo. Restituisce la conversazione aggiornata.
+          description: Updated
           content:
             application/json:
               schema:
@@ -449,12 +418,10 @@ paths:
     post:
       tags: ["groups"]
       summary: Add a user to a group
-      description: Aggiunge un utente specificato (tramite ID) a una conversazione di gruppo. L'utente autenticato deve essere membro del gruppo.
       operationId: addToGroup
       parameters:
         - $ref: '#/components/parameters/ConvID'
       requestBody:
-        description: L'ID dell'utente da aggiungere al gruppo.
         required: true
         content:
           application/json:
@@ -462,7 +429,7 @@ paths:
               $ref: '#/components/schemas/UserIdRequest'
       responses:
         '204': 
-          description: Membro aggiunto con successo. Nessun contenuto restituito.
+          description: Added
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -480,13 +447,12 @@ paths:
     delete:
       tags: ["groups"] 
       summary: Leave a group
-      description: Permette all'utente autenticato di abbandonare una conversazione di gruppo specificata.
       operationId: leaveGroup
       parameters:
         - $ref: '#/components/parameters/ConvID'
       responses:
         '204':
-          description: Gruppo abbandonato con successo. Nessun contenuto restituito.
+          description: Left
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -501,86 +467,70 @@ paths:
 components:
 
   securitySchemes:
-
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: "string"
-      description: "L'identificativo utente (ottenuto dal login) da usare come Bearer token nell'header `Authorization: Bearer <identifier>`."
     
   parameters:
-
     ConvID:
       name: convId
       in: path
       required: true
-      description: ID univoco della conversazione.
       schema:
         $ref: '#/components/schemas/InternalID' 
-        
     MsgID:
       name: msgId
       in: path
       required: true
-      description: ID univoco del messaggio.
       schema:
         $ref: '#/components/schemas/InternalID'
-
     ReactionID:
       name: reactionId
       in: path
       required: true
-      description: ID univoco della reazione.
       schema:
         $ref: '#/components/schemas/InternalID'
-        
     SearchUsername:
       name: username
       in: query
       required: true
-      description: Stringa da cercare nel nome utente (case-insensitive).
       schema:
         $ref: '#/components/schemas/SearchQuery'
 
   responses:
-
     BadRequest: # 400
-      description: Formato dei dati non valido.
+      description: Bad Request
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-
     Unauthorized: # 401
-      description: Autenticazione richiesta o token non valido.
+      description: Unauthorized
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-
     Forbidden: # 403
-      description: Non hai i permessi per eseguire questa azione.
+      description: Forbidden
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-
     NotFound: # 404
-      description: La risorsa richiesta non è stata trovata.
+      description: Not Found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-
     Conflict: # 409
-      description: La risorsa esiste già o è in conflitto.
+      description: Conflict
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-
     InternalServerError: # 500
-      description: Errore interno del server.
+      description: Server Error
       content:
         application/json:
           schema:
@@ -588,86 +538,44 @@ components:
 
   schemas:
 
-
-    # Tipi Base (service/api/schemas.go)
-
     UserID:
-      description: ID univoco in formato UUID (usato per utenti e bearer token).
       type: string
       pattern: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$'
       minLength: 36
       maxLength: 36
-      example: "abcdef01-2345-6789-abcd-ef0123456789"
-    
     InternalID:
-      description: ID univoco generato dal sistema (per conversazioni, messaggi, reazioni).
       type: string
-      pattern: '^.+$'
       minLength: 1
       maxLength: 50
-      example: "msg-789"
-
     Username:
-      description: Nome univoco scelto dall'utente.
       type: string
-      pattern: '^.+$'
       minLength: 3
       maxLength: 16
-      example: "Maria"
-      
     PhotoURL:
-      description: URL di un'immagine (http o data-uri Base64).
       type: string
-      # format: url 
-      pattern: '^.+$'
       minLength: 1
       maxLength: 1000000
-      example: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
-    
     Emoji:
-      description: Un singolo carattere emoji per una reazione.
       type: string
-      pattern: '^.+$'
       minLength: 1
       maxLength: 8
-      example: "👍"
-      
     Timestamp:
-      description: Data e ora in formato ISO 8601 UTC.
       type: string
       format: date-time
-      pattern: '^.+$'
-      example: "2024-10-20T10:30:00Z"
-
     GroupName:
-      description: Nome di una conversazione o di un gruppo.
       type: string
-      pattern: '^.+$'
       minLength: 1
       maxLength: 50
-      example: "Gruppo Lavoro"
-      
     MessageContent:
-      description: Contenuto testuale di un messaggio.
       type: string
-      pattern: '^.+$'
       minLength: 1
       maxLength: 4000
-      example: "Ciao!"
-
     SearchQuery:
-      description: Stringa per la ricerca (min 1, max 16).
       type: string
-      pattern: '^.+$'
       minLength: 1
       maxLength: 16
-      example: "ma"
-
-
-    # Strutture del Database (service/database/structs.go)
 
     User:
-      description: Rappresenta un utente registrato nel sistema.
       type: object
       properties:
         id:
@@ -679,7 +587,6 @@ components:
       required: ["id", "username"]
 
     ConversationSummary:
-      description: Rappresenta l'anteprima di una conversazione nella lista principale.
       type: object
       properties:
         id:
@@ -690,16 +597,11 @@ components:
           $ref: '#/components/schemas/PhotoURL'
         latestMessageSnippet:
           type: string
-          description: Anteprima testuale dell'ultimo messaggio o indicazione generica (es. "Foto", "GIF"). Non presente se non ci sono messaggi.
-          pattern: '^.+$'
-          maxLength: 100
-          example: "Ciao, tutto bene?"
         latestMessageTimestamp:
           $ref: '#/components/schemas/Timestamp'
       required: ["id", "name"]
 
     Conversation:
-      description: Rappresenta i dettagli completi di una singola conversazione, inclusi membri e messaggi.
       type: object
       properties:
         id:
@@ -710,64 +612,43 @@ components:
           $ref: '#/components/schemas/PhotoURL'
         isGroup:
           type: boolean
-          description: Indica se si tratta di una conversazione di gruppo (`true`) o 1-1 (`false`).
-          example: true
         members:
           type: array
-          description: Lista degli utenti membri della conversazione.
-          minItems: 1 
-          maxItems: 100 
           items:
             $ref: '#/components/schemas/User'
         messages:
           type: array
-          description: Lista dei messaggi scambiati nella conversazione (ordinati dal più recente al meno recente).
-          minItems: 0
-          maxItems: 1000
           items:
             $ref: '#/components/schemas/Message'
       required: ["id", "name", "isGroup", "members", "messages"]
 
     Message:
-      description: Rappresenta un singolo messaggio all'interno di una conversazione.
       type: object
       properties:
         id:
           $ref: '#/components/schemas/InternalID'
         sender:
           $ref: '#/components/schemas/User'
-        content:
+        text:
           type: string
-          description: Contenuto del messaggio. Se contentType='text' è il testo. Se 'photo', è la stringa Base64 o URL.
-          minLength: 1
-          maxLength: 1000000 
-        contentType:
+          description: Testo del messaggio (opzionale se c'è foto).
+        photoUrl:
           type: string
-          description: Tipo di contenuto del messaggio.
-          pattern: '^.+$'
-          enum: ["text", "photo"]
-          example: "text"
+          description: Foto del messaggio (opzionale se c'è testo).
         timestamp:
           $ref: '#/components/schemas/Timestamp'
         status:
           type: string
-          description: Stato di consegna/lettura del messaggio (visibile solo per i messaggi inviati dall'utente autenticato). Non presente per i messaggi ricevuti.
-          pattern: '^.+$'
           enum: ["sent", "received", "read"]
-          example: "read"
         replyToMsgId:
           $ref: '#/components/schemas/InternalID'
         reactions:
           type: array
-          description: Lista delle reazioni associate a questo messaggio.
-          minItems: 0
-          maxItems: 50
           items:
             $ref: '#/components/schemas/Reaction'
-      required: ["id", "sender", "content", "contentType", "timestamp"]
+      required: ["id", "sender", "timestamp"]
 
     Reaction:
-      description: Rappresenta una singola reazione (emoji) data da un utente a un messaggio.
       type: object
       properties:
         id:
@@ -778,79 +659,54 @@ components:
           $ref: '#/components/schemas/User'
       required: ["id", "emoji", "user"]
 
-
-    # Schemi di richiesta/risposta API (service/api/schemas.go)
-
     ErrorResponse:
-      description: Schema generico per le risposte di errore.
       type: object
       properties:
         message:
           type: string
-          description: Messaggio descrittivo dell'errore.
-          minLength: 1
-          maxLength: 256
-          pattern: '^.+$'
-          example: "Si è verificato un errore."
       required: ["message"]
 
     DoLoginRequest:
-      description: Dati inviati per effettuare il login o la registrazione.
       type: object
       properties:
         username: 
           $ref: '#/components/schemas/Username'
       required: ["username"] 
-      
     DoLoginResponse:
-      description: Risposta al login/registrazione, contenente l'identificativo univoco dell'utente.
       type: object
       properties:
         identifier:
           $ref: '#/components/schemas/UserID'
       required: ["identifier"]
-      
     SetMyUserNameRequest:
-      description: Dati inviati per aggiornare il nome utente.
       type: object
       properties:
         username:
           $ref: '#/components/schemas/Username'
       required: ["username"]
-
     SetPhotoRequest:
-      description: Dati inviati per aggiornare l'URL della foto profilo dell'utente o del gruppo.
       type: object
       properties:
         photoUrl:
           $ref: '#/components/schemas/PhotoURL'
       required: ["photoUrl"]
-
     UserIdRequest: 
-      description: Un oggetto che contiene un singolo ID utente (UUID).
       type: object
       properties:
         userId:
           $ref: '#/components/schemas/UserID'
       required: ["userId"]
-
     CreateGroupRequest:
-      description: Dati inviati per creare una nuova conversazione di gruppo.
       type: object
       properties:
         groupName:
           $ref: '#/components/schemas/GroupName'
         memberIds:
           type: array
-          description: Lista degli ID (univoci) degli utenti da aggiungere al gruppo (oltre all'utente che crea).
-          minItems: 1 
-          maxItems: 99 
           items:
             $ref: '#/components/schemas/UserID'
       required: ["groupName", "memberIds"]
-      
     SetGroupNameRequest:
-      description: Dati inviati per rinominare un gruppo.
       type: object
       properties:
         name:
@@ -858,63 +714,41 @@ components:
       required: ["name"]
       
     SendMessageRequest:
-      description: Dati inviati per creare un nuovo messaggio. Deve contenere `text` o `photoUrl`.
+      description: Messaggio con testo opzionale e foto opzionale. Almeno uno dei due deve esserci.
       type: object
       properties:
         replyToMsgId:
           $ref: '#/components/schemas/InternalID'
-      oneOf:
-        - type: object
-          description: Messaggio di testo.
-          properties:
-            text:
-              $ref: '#/components/schemas/MessageContent'
-          required: ["text"]
-        - type: object
-          description: Messaggio con foto.
-          properties:
-            photoUrl:
-              $ref: '#/components/schemas/PhotoURL'
-          required: ["photoUrl"]
+        text:
+          $ref: '#/components/schemas/MessageContent'
+        photoUrl:
+          $ref: '#/components/schemas/PhotoURL'
         
     ForwardMessageRequest:
-      description: Dati inviati per inoltrare un messaggio esistente.
       type: object
       properties:
         originalMessageId:
           $ref: '#/components/schemas/InternalID'
       required: ["originalMessageId"]
-
     CommentMessageRequest:
-      description: Dati inviati per aggiungere una reazione a un messaggio.
       type: object
       properties:
         emoji:
           $ref: '#/components/schemas/Emoji'
       required: ["emoji"]
-
     UserList:
-      description: Una lista di utenti.
       type: object
       properties:
         users:
           type: array
-          description: Lista degli utenti trovati.
           items:
             $ref: '#/components/schemas/User'
-          minItems: 0
-          maxItems: 100
       required: ["users"]
-
     ConversationList:
-      description: Una lista di anteprime delle conversazioni.
       type: object
       properties:
         conversations:
           type: array
-          description: Lista delle anteprime delle conversazioni.
           items:
             $ref: '#/components/schemas/ConversationSummary'
-          minItems: 0
-          maxItems: 100
       required: ["conversations"]

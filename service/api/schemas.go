@@ -1,107 +1,85 @@
 package api
 
 import (
-	"errors"  // Libreria per gestire gli errori
-	"net/url" // Libreria per gestire gli URL
-	"regexp"  // Libreria per le espressioni regolari
+	"errors"
+	"net/url"
+	"regexp"
 )
 
 var (
 	uuidRegex = regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$`)
 )
 
-// Tipi Base e loro validazioni
+// -- Tipi Base e Validazioni --
 
-type UserID string // components/schemas/UserID
+type UserID string
 
 func (id UserID) Validate() error {
-	// Prende una stringa e verifica se è un UserID valido
-
 	if !uuidRegex.MatchString(string(id)) {
 		return errors.New("Formato UserID non valido. Deve essere un UUID.")
 	}
 	return nil
 }
 
-type InternalID string // components/schemas/InternalID
-// Usato per ID interni come MessageID, GroupID, ecc.
+type InternalID string
 
 func (id InternalID) Validate() error {
-	// Prende una stringa e verifica se è un InternalID valido
-
 	if len(id) < 1 || len(id) > 50 {
-		return errors.New("ID interno non valido (deve essere tra 1 e 50 caratteri)")
+		return errors.New("ID interno non valido")
 	}
 	return nil
 }
 
-type Username string // components/schemas/Username
+type Username string
 
 func (u Username) Validate() error {
-	// Prende una stringa e verifica se è un Username valido
-
 	if len(u) < 3 || len(u) > 16 {
-		return errors.New("Nome utente non valido (deve essere tra 3 e 16 caratteri)")
+		return errors.New("Nome utente non valido (3-16 caratteri)")
 	}
 	return nil
 }
 
-type PhotoURL string // components/schemas/PhotoURL
+type PhotoURL string
 
 func (p PhotoURL) Validate() error {
-	// Prende una stringa e verifica se è un PhotoURL valido
-
-	// Controllo Lunghezza Aumentato
 	if len(p) < 1 || len(p) > 1000000 {
-		return errors.New("URL foto non valido (lunghezza max 1.000.000 caratteri)")
+		return errors.New("URL foto troppo lungo o vuoto")
 	}
-
-	// Opzionale: Rilassare il controllo URI per supportare "data:image/..."
-	// Se inizia con "data:", lo consideriamo valido senza parsarlo con url.ParseRequestURI
 	str := string(p)
 	if len(str) > 5 && str[:5] == "data:" {
-		return nil // È un'immagine Base64, va bene così
+		return nil
 	}
-
-	// Altrimenti controlliamo che sia un URL web valido
 	if _, err := url.ParseRequestURI(str); err != nil {
-		return errors.New("URL foto non valido (formato URI non corretto)")
+		return errors.New("URL foto non valido")
 	}
 	return nil
 }
 
-type Emoji string // components/schemas/Emoji
+type Emoji string
 
 func (e Emoji) Validate() error {
-	// Prende una stringa e verifica se è un Emoji valido
-
 	if len(e) < 1 || len(e) > 8 {
-		return errors.New("Emoji non valido (deve essere tra 1 e 8 caratteri)")
+		return errors.New("Emoji non valido")
 	}
 	return nil
 }
 
-type Timestamp string // components/schemas/Timestamp
-// La validazione è 'format: date-time', la gestisce il JSON decoder
+type Timestamp string
 
-type GroupName string // components/schemas/GroupName
+type GroupName string
 
 func (g GroupName) Validate() error {
-	// Prende una stringa e verifica se è un GroupName valido
-
 	if len(g) < 1 || len(g) > 50 {
-		return errors.New("Nome gruppo non valido (deve essere tra 1 e 50 caratteri)")
+		return errors.New("Nome gruppo non valido")
 	}
 	return nil
 }
 
-type MessageContent string // components/schemas/MessageContent
+type MessageContent string
 
 func (m MessageContent) Validate() error {
-	// Prende una stringa e verifica se è un MessageContent valido
-
 	if len(m) < 1 || len(m) > 4000 {
-		return errors.New("Contenuto messaggio non valido (deve essere tra 1 e 4000 caratteri)")
+		return errors.New("Testo messaggio troppo lungo")
 	}
 	return nil
 }
@@ -109,59 +87,53 @@ func (m MessageContent) Validate() error {
 type SearchQuery string
 
 func (s SearchQuery) Validate() error {
-	// Prende una stringa e verifica se è una query di ricerca valida
-	// (come da YAML: min 1, max 16)
 	if len(s) < 1 || len(s) > 16 {
-		return errors.New("il termine di ricerca deve essere tra 1 e 16 caratteri")
+		return errors.New("Query ricerca non valida")
 	}
 	return nil
 }
 
-// Schemi di richiesta/risposta API
+// -- Schemi Request/Response --
 
-type ErrorResponse struct { // components/schemas/ErrorResponse
+type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
-type DoLoginRequest struct { // components/schemas/DoLoginRequest
+type DoLoginRequest struct {
 	Username Username `json:"username"`
 }
-
-type DoLoginResponse struct { // components/schemas/DoLoginResponse
+type DoLoginResponse struct {
 	Identifier UserID `json:"identifier"`
 }
 
-type SetMyUserNameRequest struct { // components/schemas/SetMyUserNameRequest
+type SetMyUserNameRequest struct {
 	Username Username `json:"username"`
 }
-
-type SetPhotoRequest struct { // components/schemas/SetPhotoRequest
+type SetPhotoRequest struct {
 	PhotoURL PhotoURL `json:"photoUrl"`
 }
-
-type UserIdRequest struct { // components/schemas/UserIdRequest
+type UserIdRequest struct {
 	UserID UserID `json:"userId"`
 }
 
-type CreateGroupRequest struct { // components/schemas/CreateGroupRequest
+type CreateGroupRequest struct {
 	GroupName GroupName `json:"groupName"`
 	MemberIds []UserID  `json:"memberIds"`
 }
-
-type SetGroupNameRequest struct { // components/schemas/SetGroupNameRequest
+type SetGroupNameRequest struct {
 	Name GroupName `json:"name"`
 }
 
-type SendMessageRequest struct { // components/schemas/SendMessageRequest
+// SendMessageRequest AGGIORNATA: Niente puntatori OneOf complessi.
+type SendMessageRequest struct {
 	ReplyToMsgId InternalID      `json:"replyToMsgId,omitempty"`
-	Text         *MessageContent `json:"text,omitempty"`
-	PhotoURL     *PhotoURL       `json:"photoUrl,omitempty"`
+	Text         *MessageContent `json:"text,omitempty"`     // Puntatore per capire se è presente
+	PhotoURL     *PhotoURL       `json:"photoUrl,omitempty"` // Puntatore per capire se è presente
 }
 
-type ForwardMessageRequest struct { // components/schemas/ForwardMessageRequest
+type ForwardMessageRequest struct {
 	OriginalMessageId InternalID `json:"originalMessageId"`
 }
-
-type CommentMessageRequest struct { // components/schemas/CommentMessageRequest
+type CommentMessageRequest struct {
 	Emoji Emoji `json:"emoji"`
 }

@@ -54,6 +54,7 @@ export async function apiGetMyConversations() {
     return response.data;
 }
 
+
 export async function apiSearchUsers(username) {
     const response = await axios.get('/users', {
         params: { username }
@@ -71,13 +72,14 @@ export async function apiGetConversation(conversationId) {
     return response.data;
 }
 
-// Invia messaggio (Testo o Foto)
-export async function apiSendMessage(conversationId, content, type = 'text', replyToMsgId = null) {
+// Invia messaggio (Testo e/o Foto)
+export async function apiSendMessage(conversationId, contentText, contentPhoto, replyToMsgId = null) {
     const payload = {};
     if (replyToMsgId) payload.replyToMsgId = replyToMsgId;
 
-    if (type === 'text') payload.text = content;
-    else if (type === 'photo') payload.photoUrl = content;
+    // Ora inviamo entrambi se presenti
+    if (contentText) payload.text = contentText;
+    if (contentPhoto) payload.photoUrl = contentPhoto;
 
     const response = await axios.post(`/conversations/${conversationId}/messages`, payload);
     return response.data;

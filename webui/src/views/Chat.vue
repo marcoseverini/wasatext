@@ -19,17 +19,17 @@ const errorMsg = ref('');
 
 // Variabili per l'invio messaggi
 const newMessageText = ref(''); 
-const selectedImageFile = ref(null);     // File fisico
-const selectedImagePreview = ref(null);  // Anteprima base64
+const selectedImageFile = ref(null);     
+const selectedImagePreview = ref(null);  
 const isSending = ref(false); 
 
 const router = useRouter();
 const showGroupInfo = ref(false); 
 
-// Variabili per l'inoltro
+// Variabili per l'inoltro (AGGIORNATE per supportare testo + foto)
 const showForwardModal = ref(false);
-const msgContentToForward = ref(null);
-const msgTypeToForward = ref(null);
+const msgTextToForward = ref(null);
+const msgPhotoToForward = ref(null);
 
 const replyingToMsg = ref(null); 
 const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -39,10 +39,7 @@ const route = useRoute();
 const convId = route.params.id; 
 const loggedInUserId = localStorage.getItem('sessionToken'); 
 
-// Ref per lo scroll automatico
 const messagesContainer = ref(null);
-
-// Variabile per il polling (auto-refresh)
 let pollingInterval = null;
 
 // --- GESTIONE DATI E POLLING ---
@@ -64,7 +61,6 @@ const refreshConversation = async (showLoading = false) => {
     }
   } catch (err) {
     console.error("Errore refresh:", err);
-    // Non mostriamo l'errore a video durante il polling per non disturbare l'utente
     if (showLoading) errorMsg.value = err.message;
   } finally {
     if (showLoading) loading.value = false;
@@ -80,54 +76,44 @@ const scrollToBottom = () => {
 };
 
 onMounted(async () => { 
-  // Caricamento iniziale
   await refreshConversation(true);
   scrollToBottom();
 
-  // Avvio polling ogni 3 secondi per aggiornare i messaggi e le spunte
   pollingInterval = setInterval(() => {
-    refreshConversation(false); // false = niente spinner di caricamento
+    refreshConversation(false); 
   }, 3000);
 });
 
 onUnmounted(() => {
-  // Pulizia intervallo quando si cambia pagina
   if (pollingInterval) clearInterval(pollingInterval);
 });
 
 // --- GESTIONE INVIO (FOTO + TESTO) ---
 
-// 1. Selezione File
 const onFileSelect = (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
-  if (file.size > 1000000) { // 1MB
+  if (file.size > 1000000) { 
     alert("L'immagine è troppo grande (max 1MB).");
     return;
   }
 
-  // Anteprima
   const reader = new FileReader();
   reader.onload = (e) => {
     selectedImagePreview.value = e.target.result; 
     selectedImageFile.value = file; 
   };
   reader.readAsDataURL(file);
-  
-  // Reset input per permettere di riselezionare lo stesso file
   event.target.value = ''; 
 };
 
-// 2. Rimozione File selezionato
 const removeSelectedImage = () => {
   selectedImageFile.value = null;
   selectedImagePreview.value = null;
 };
 
-// 3. Invio combinato
 const handleSendMessage = async () => {
-  // Se non c'è né testo né foto, non fare nulla
   if (newMessageText.value.trim() === '' && !selectedImageFile.value) return;
 
   isSending.value = true;
@@ -135,24 +121,18 @@ const handleSendMessage = async () => {
   const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
 
   try {
-    // A) Se c'è una FOTO, inviala
-    if (selectedImagePreview.value) {
-      await apiSendMessage(convId, selectedImagePreview.value, 'photo', replyId);
-    }
+    // Chiamata UNICA con testo E foto (API aggiornata)
+    await apiSendMessage(
+        convId, 
+        newMessageText.value.trim(), // testo
+        selectedImagePreview.value,  // foto
+        replyId
+    );
 
-    // B) Se c'è TESTO (didascalia), invialo
-    if (newMessageText.value.trim() !== '') {
-      // Se abbiamo già inviato la foto, il testo potrebbe non dover essere una "reply" alla foto stessa,
-      // ma per semplicità manteniamo il replyId originale se presente.
-      await apiSendMessage(convId, newMessageText.value, 'text', replyId);
-    }
-
-    // Reset completo
     newMessageText.value = '';
     removeSelectedImage();
     replyingToMsg.value = null;
     
-    // Aggiorna subito la chat
     await refreshConversation(false);
     scrollToBottom();
 
@@ -170,18 +150,17 @@ const onLeftGroup = () => {
   router.push('/'); 
 };
 
-// Inoltro: prepariamo i dati da passare al modale
+// Inoltro: Ora catturiamo text e photoUrl
 const openForwardModal = (msg) => {
-  msgContentToForward.value = msg.content;
-  msgTypeToForward.value = msg.contentType;
+  msgTextToForward.value = msg.text || '';
+  msgPhotoToForward.value = msg.photoUrl || '';
   showForwardModal.value = true;
 };
 
 const onForwardSuccess = async () => {
   showForwardModal.value = false;
-  msgContentToForward.value = null;
-  msgTypeToForward.value = null;
-  // Ricarichiamo nel caso avessimo inoltrato a questa stessa chat
+  msgTextToForward.value = null;
+  msgPhotoToForward.value = null;
   await refreshConversation(false);
   scrollToBottom();
 };
@@ -190,7 +169,7 @@ const handleDeleteMessage = async (messageId) => {
   if (!window.confirm("Sei sicuro di voler cancellare questo messaggio?")) return;
   try {
     await apiDeleteMessage(messageId);
-    await refreshConversation(false); // Ricarica per aggiornare la lista
+    await refreshConversation(false); 
   } catch (err) {
     errorMsg.value = err.message;
   }
@@ -204,7 +183,6 @@ const handleAddReaction = async (msgId, emoji) => {
   activeReactionMenuId.value = null; 
   try {
     await apiAddReaction(msgId, emoji);
-    // Non modifichiamo l'array localmente, ricarichiamo per avere lo stato server corretto
     await refreshConversation(false); 
   } catch (err) {
     errorMsg.value = "Impossibile reagire: " + err.message;
@@ -283,24 +261,22 @@ const getRepliedMessage = (replyId) => {
                   {{ getRepliedMessage(msg.replyToMsgId).sender.username }}
                 </small>
                 <small class="text-truncate d-block" style="max-width: 200px;">
-                  <span v-if="getRepliedMessage(msg.replyToMsgId).contentType === 'photo'">📷 [Foto]</span>
-                  <span v-else>{{ getRepliedMessage(msg.replyToMsgId).content }}</span>
+                  <span v-if="getRepliedMessage(msg.replyToMsgId).photoUrl">📷 [Foto] </span>
+                  <span v-if="getRepliedMessage(msg.replyToMsgId).text">{{ getRepliedMessage(msg.replyToMsgId).text }}</span>
                 </small>
               </div>
             </div>
 
             <div class="message-content">
-              <div v-if="msg.contentType === 'photo'">
+              <div v-if="msg.photoUrl" class="mb-1">
                 <img 
-                  :src="msg.content" 
+                  :src="msg.photoUrl" 
                   class="img-fluid rounded" 
                   style="max-width: 300px; max-height: 300px;" 
                   alt="Foto inviata"
                 >
               </div>
-              <div v-else>
-                {{ msg.content }}
-              </div>
+              <div v-if="msg.text" style="white-space: pre-wrap;">{{ msg.text }}</div>
             </div>
             
             <div v-if="msg.reactions && msg.reactions.length > 0" class="reactions-container mt-1">
@@ -363,8 +339,8 @@ const getRepliedMessage = (replyId) => {
             <div>
               <small class="fw-bold d-block text-primary">Rispondendo a {{ replyingToMsg.sender.username }}</small>
               <small class="text-muted text-truncate d-block" style="max-width: 300px;">
-                 <span v-if="replyingToMsg.contentType === 'photo'">📷 [Foto]</span>
-                 <span v-else>{{ replyingToMsg.content }}</span>
+                 <span v-if="replyingToMsg.photoUrl">📷 [Foto] </span>
+                 <span v-if="replyingToMsg.text">{{ replyingToMsg.text }}</span>
               </small>
             </div>
           </div>
@@ -413,8 +389,8 @@ const getRepliedMessage = (replyId) => {
     <ForwardModal 
       v-if="showForwardModal"
       :show="showForwardModal"
-      :content="msgContentToForward"
-      :type="msgTypeToForward"
+      :text="msgTextToForward"
+      :photo="msgPhotoToForward"
       @close="showForwardModal = false"
       @forward-success="onForwardSuccess"
     />

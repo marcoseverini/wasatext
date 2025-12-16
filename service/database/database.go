@@ -1,9 +1,9 @@
 package database
 
 import (
-	"database/sql" // Libreria per parlare con SQL
-	"errors"       // Libreria per gestire gli errori
-	"fmt"          // Libreria per formattare gli errori
+	"database/sql"
+	"errors"
+	"fmt"
 )
 
 var ErrForbidden = errors.New("user is not a member of this conversation")
@@ -11,7 +11,7 @@ var ErrBadRequest = errors.New("invalid request data")
 var ErrAlreadyMember = errors.New("user is already a member")
 var ErrUsernameTaken = errors.New("username already taken")
 
-// Interfaccia per comunicare con il database
+// Interfaccia Database
 type AppDatabase interface {
 	Ping() error
 	DoLogin(username string) (User, error)
@@ -25,7 +25,10 @@ type AppDatabase interface {
 	StartConversation(requestingUserID string, targetUserID string) (string, error)
 	GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error)
 	GetConversationSummaries(userID string) ([]ConversationSummary, error)
-	SendMessage(senderId string, convId string, content string, contentType string, replyToMsgId *string) (Message, error)
+
+	// Modificata: accetta text e photoUrl opzionali
+	SendMessage(senderId string, convId string, text string, photoUrl string, replyToMsgId *string) (Message, error)
+
 	DeleteMessage(requestingUserID string, messageID string) error
 	ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error)
 	AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error)
@@ -38,29 +41,26 @@ type AppDatabase interface {
 }
 
 type appdbimpl struct {
-	c *sql.DB // Connessione con il Database
+	c *sql.DB
 }
 
 func New(db *sql.DB) (AppDatabase, error) {
-	// Prende in input una connessione al database, restituisce un'istanza di AppDatabase
-
-	if db == nil { // Verifica che la connessione al database non sia nulla
+	if db == nil {
 		return nil, errors.New("database is required when building a AppDatabase")
 	}
 
-	// Comando SQL per creare la tabella utenti, se non esiste
+	// Users Table
 	sqlStmt := `CREATE TABLE IF NOT EXISTS users (
 		id TEXT NOT NULL PRIMARY KEY,
 		username TEXT NOT NULL UNIQUE,
 		photoUrl TEXT
 	);`
-	_, err := db.Exec(sqlStmt) // Esegue il comando SQL sul database
-
+	_, err := db.Exec(sqlStmt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating database structure: %w", err)
 	}
 
-	// Tabella Conversazioni
+	// Conversations Table
 	sqlStmt = `CREATE TABLE IF NOT EXISTS conversations (
 		id TEXT NOT NULL PRIMARY KEY,
 		name TEXT,
@@ -72,7 +72,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating conversations table: %w", err)
 	}
 
-	// Tabella Membri Conversazione
+	// Members Table
 	sqlStmt = `CREATE TABLE IF NOT EXISTS conversation_members (
 		conversationId TEXT NOT NULL,
 		userId TEXT NOT NULL,
@@ -85,28 +85,32 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating conversation_members table: %w", err)
 	}
 
-	// Tabella Messaggi
+	// Messages Table (AGGIORNATA)
+	// Rimuoviamo 'content' e 'contentType'
+	// Aggiungiamo 'text' e 'photoUrl'
 	sqlStmt = `CREATE TABLE IF NOT EXISTS messages (
 		id TEXT NOT NULL PRIMARY KEY,
 		conversationId TEXT NOT NULL,
 		senderId TEXT NOT NULL,
-		content TEXT NOT NULL,
-		contentType TEXT NOT NULL DEFAULT 'text',
+		
+		text TEXT,       -- Può essere null/empty se c'è solo foto
+		photoUrl TEXT,   -- Può essere null/empty se c'è solo testo
+
 		timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		replyToMsgId TEXT,
 		status TEXT NOT NULL DEFAULT 'sent',
-		forwardedFromMsgId TEXT, -- AGGIUNGI QUESTA
+		forwardedFromMsgId TEXT,
 		FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE,
 		FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (replyToMsgId) REFERENCES messages(id) ON DELETE SET NULL,
-		FOREIGN KEY (forwardedFromMsgId) REFERENCES messages(id) ON DELETE SET NULL -- AGGIUNGI QUESTA
+		FOREIGN KEY (forwardedFromMsgId) REFERENCES messages(id) ON DELETE SET NULL
 	);`
 	_, err = db.Exec(sqlStmt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating messages table: %w", err)
 	}
 
-	// Tabella Reazioni
+	// Reactions Table
 	sqlStmt = `CREATE TABLE IF NOT EXISTS reactions (
 		id TEXT NOT NULL PRIMARY KEY,
 		messageId TEXT NOT NULL,
@@ -121,12 +125,9 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating reactions table: %w", err)
 	}
 
-	// Ritorna un puntatore all'implementazione concreta del database (appdbimpl)
-	// che soddisfa l'interfaccia (AppDatabase) ed un errore nullo (nil) per segnalare il successo
 	return &appdbimpl{c: db}, nil
 }
 
 func (db *appdbimpl) Ping() error {
-	// Inoltra il comando Ping alla connessione con il database per verificare che sia attiva
 	return db.c.Ping()
 }
