@@ -4,14 +4,14 @@ import {
   apiGetMyConversations, 
   apiSearchUsers, 
   apiSendMessage, 
-  apiStartConversation // Assicurati che questa sia in api.js
+  apiStartConversation 
 } from '@/services/api.js';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const props = defineProps({
   show: Boolean,
-  content: String,
-  type: String
+  text: String,
+  photo: String
 });
 
 const emit = defineEmits(['close', 'forward-success']);
@@ -48,25 +48,22 @@ const handleSearch = async () => {
   }
 };
 
-// Funzione unificata per gestire l'inoltro
 const handleForward = async (item, isSearchResult) => {
-  if (!props.content) return;
+  // Controlliamo se c'è qualcosa da inoltrare
+  if (!props.text && !props.photo) return;
   
-  // Usiamo l'ID dell'elemento cliccato come riferimento per lo spinner
   sendingToId.value = item.id;
   
   try {
     let targetConvId = item.id;
 
-    // SE è un risultato di ricerca (Utente), dobbiamo prima trovare/creare la conversazione
     if (isSearchResult) {
-      // apiStartConversation nel backend (conversations.go) "avvia o trova" la chat
       const convData = await apiStartConversation(item.id);
       targetConvId = convData.id;
     }
 
-    // Ora inviamo il messaggio all'ID della conversazione reale
-    await apiSendMessage(targetConvId, props.content, props.type);
+    // Usiamo apiSendMessage con la nuova firma (text, photo)
+    await apiSendMessage(targetConvId, props.text, props.photo);
     
     alert("Messaggio inoltrato!");
     emit('forward-success');

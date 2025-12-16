@@ -1,6 +1,6 @@
 import axios from "./axios";
 
-// Interceptor: Aggiunge il token a ogni richiesta (se presente)
+// Interceptor: Aggiunge il token a ogni richiesta
 axios.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('sessionToken');
@@ -12,7 +12,7 @@ axios.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Interceptor: Gestisce errori globali (es. 401 Logout)
+// Interceptor: Gestisce errori globali
 axios.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -22,18 +22,15 @@ axios.interceptors.response.use(
             localStorage.removeItem('photoUrl');
             window.location.href = "/";
         }
-        // Ritorna il messaggio di errore del server se presente, altrimenti quello generico
         const msg = error.response?.data?.message || error.message;
         return Promise.reject(new Error(msg));
     }
 );
 
-// --- FUNZIONI API (Convertite a Axios) ---
+// --- FUNZIONI API ---
 
 export async function apiLogin(username) {
-    // axios.post restituisce un oggetto response, i dati sono in response.data
     const response = await axios.post('/session', { username });
-    
     if (response.data.identifier) {
         localStorage.setItem('sessionToken', response.data.identifier);
         localStorage.setItem('username', username);
@@ -54,14 +51,12 @@ export async function apiGetMyConversations() {
     return response.data;
 }
 
-
 export async function apiSearchUsers(username) {
-    const response = await axios.get('/users', {
-        params: { username }
-    });
+    const response = await axios.get('/users', { params: { username } });
     return response.data;
 }
 
+// Fondamentale per l'inoltro a nuovi utenti
 export async function apiStartConversation(userId) {
     const response = await axios.post('/conversations', { userId });
     return response.data;
@@ -72,14 +67,12 @@ export async function apiGetConversation(conversationId) {
     return response.data;
 }
 
-// Invia messaggio (Testo e/o Foto)
-export async function apiSendMessage(conversationId, contentText, contentPhoto, replyToMsgId = null) {
+// AGGIORNATA: Supporta invio congiunto di testo e foto
+export async function apiSendMessage(conversationId, text, photoUrl, replyToMsgId = null) {
     const payload = {};
     if (replyToMsgId) payload.replyToMsgId = replyToMsgId;
-
-    // Ora inviamo entrambi se presenti
-    if (contentText) payload.text = contentText;
-    if (contentPhoto) payload.photoUrl = contentPhoto;
+    if (text) payload.text = text;
+    if (photoUrl) payload.photoUrl = photoUrl;
 
     const response = await axios.post(`/conversations/${conversationId}/messages`, payload);
     return response.data;
@@ -135,6 +128,7 @@ export async function apiSetGroupPhoto(convId, photoUrl) {
     return response.data;
 }
 
+// (Opzionale: manteniamo la vecchia forward per compatibilità, ma non la useremo nel modale)
 export async function apiForwardMessage(targetConvId, originalMsgId) {
     const response = await axios.post(`/conversations/${targetConvId}/forwarded_messages`, { originalMessageId: originalMsgId });
     return response.data;

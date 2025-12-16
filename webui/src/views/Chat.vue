@@ -17,7 +17,7 @@ const conversation = ref(null);
 const loading = ref(true); 
 const errorMsg = ref(''); 
 
-// Variabili per l'invio messaggi
+// Invio
 const newMessageText = ref(''); 
 const selectedImageFile = ref(null);     
 const selectedImagePreview = ref(null);  
@@ -26,7 +26,7 @@ const isSending = ref(false);
 const router = useRouter();
 const showGroupInfo = ref(false); 
 
-// Variabili per l'inoltro (AGGIORNATE per supportare testo + foto)
+// Inoltro (AGGIORNATO: usa text e photo)
 const showForwardModal = ref(false);
 const msgTextToForward = ref(null);
 const msgPhotoToForward = ref(null);
@@ -42,25 +42,20 @@ const loggedInUserId = localStorage.getItem('sessionToken');
 const messagesContainer = ref(null);
 let pollingInterval = null;
 
-// --- GESTIONE DATI E POLLING ---
-
 const refreshConversation = async (showLoading = false) => {
   try {
     if (showLoading) loading.value = true;
     const data = await apiGetConversation(convId);
     if (data.messages) data.messages.reverse();
     
-    // Controllo se è arrivato un nuovo messaggio per fare scroll in basso
     const oldLastMsg = conversation.value?.messages?.at(-1)?.id;
     const newLastMsg = data.messages?.at(-1)?.id;
     
     conversation.value = data;
 
-    if (oldLastMsg !== newLastMsg) {
-      scrollToBottom();
-    }
+    if (oldLastMsg !== newLastMsg) scrollToBottom();
   } catch (err) {
-    console.error("Errore refresh:", err);
+    console.error("Refresh error:", err);
     if (showLoading) errorMsg.value = err.message;
   } finally {
     if (showLoading) loading.value = false;
@@ -78,27 +73,20 @@ const scrollToBottom = () => {
 onMounted(async () => { 
   await refreshConversation(true);
   scrollToBottom();
-
-  pollingInterval = setInterval(() => {
-    refreshConversation(false); 
-  }, 3000);
+  pollingInterval = setInterval(() => refreshConversation(false), 3000);
 });
 
 onUnmounted(() => {
   if (pollingInterval) clearInterval(pollingInterval);
 });
 
-// --- GESTIONE INVIO (FOTO + TESTO) ---
-
 const onFileSelect = (event) => {
   const file = event.target.files[0];
   if (!file) return;
-
   if (file.size > 1000000) { 
     alert("L'immagine è troppo grande (max 1MB).");
     return;
   }
-
   const reader = new FileReader();
   reader.onload = (e) => {
     selectedImagePreview.value = e.target.result; 
@@ -121,18 +109,17 @@ const handleSendMessage = async () => {
   const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
 
   try {
-    // Chiamata UNICA con testo E foto (API aggiornata)
+    // Chiamata API aggiornata (testo, foto)
     await apiSendMessage(
         convId, 
-        newMessageText.value.trim(), // testo
-        selectedImagePreview.value,  // foto
+        newMessageText.value.trim(), 
+        selectedImagePreview.value,  
         replyId
     );
 
     newMessageText.value = '';
     removeSelectedImage();
     replyingToMsg.value = null;
-    
     await refreshConversation(false);
     scrollToBottom();
 
@@ -143,15 +130,14 @@ const handleSendMessage = async () => {
   }
 };
 
-// --- ALTRE FUNZIONI ---
-
 const onLeftGroup = () => {
   showGroupInfo.value = false;
   router.push('/'); 
 };
 
-// Inoltro: Ora catturiamo text e photoUrl
+// Logica Inoltro Aggiornata
 const openForwardModal = (msg) => {
+  // Passiamo il contenuto esplicito al modale
   msgTextToForward.value = msg.text || '';
   msgPhotoToForward.value = msg.photoUrl || '';
   showForwardModal.value = true;
@@ -166,7 +152,7 @@ const onForwardSuccess = async () => {
 };
 
 const handleDeleteMessage = async (messageId) => {
-  if (!window.confirm("Sei sicuro di voler cancellare questo messaggio?")) return;
+  if (!window.confirm("Cancellare messaggio?")) return;
   try {
     await apiDeleteMessage(messageId);
     await refreshConversation(false); 
@@ -195,7 +181,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
     await apiRemoveReaction(msgId, reaction.id);
     await refreshConversation(false);
   } catch (err) {
-    errorMsg.value = "Impossibile rimuovere reazione: " + err.message;
+    errorMsg.value = "Impossibile rimuovere: " + err.message;
   }
 };
 
@@ -226,8 +212,7 @@ const getRepliedMessage = (replyId) => {
         <div class="d-flex align-items-center">
           <img
             :src="conversation.photoUrl || 'https://placehold.co/40x40/e9ecef/000000?text=' + conversation.name.charAt(0).toUpperCase()"
-            alt="foto" width="40" height="40" class="rounded-circle me-3 border"
-            style="object-fit: cover;"
+            alt="foto" width="40" height="40" class="rounded-circle me-3 border" style="object-fit: cover;"
           >
           <h1 class="h4 mb-0">{{ conversation.name }}</h1>
         </div>
@@ -237,17 +222,12 @@ const getRepliedMessage = (replyId) => {
       </div>
 
       <div class="message-list" @click="activeReactionMenuId = null" ref="messagesContainer"> 
-        <div v-if="conversation.messages.length === 0" class="text-center text-muted">
-          Questo è l'inizio della tua conversazione.
-        </div>
+        <div v-if="conversation.messages.length === 0" class="text-center text-muted">Inizio conversazione.</div>
         
-        <div 
-          v-for="msg in conversation.messages" 
-          :key="msg.id"
+        <div v-for="msg in conversation.messages" :key="msg.id"
           class="message-wrapper d-flex align-items-center"
           :class="{ 'sent-wrapper': msg.sender.id === loggedInUserId }"
         >
-          
           <div class="message-bubble" :class="{ 'sent': msg.sender.id === loggedInUserId }"> 
             
             <div v-if="conversation.isGroup && msg.sender.id !== loggedInUserId" class="message-sender">
@@ -269,24 +249,16 @@ const getRepliedMessage = (replyId) => {
 
             <div class="message-content">
               <div v-if="msg.photoUrl" class="mb-1">
-                <img 
-                  :src="msg.photoUrl" 
-                  class="img-fluid rounded" 
-                  style="max-width: 300px; max-height: 300px;" 
-                  alt="Foto inviata"
-                >
+                <img :src="msg.photoUrl" class="img-fluid rounded" style="max-width: 300px; max-height: 300px;">
               </div>
               <div v-if="msg.text" style="white-space: pre-wrap;">{{ msg.text }}</div>
             </div>
             
             <div v-if="msg.reactions && msg.reactions.length > 0" class="reactions-container mt-1">
-              <span 
-                v-for="reaction in msg.reactions" 
-                :key="reaction.id"
+              <span v-for="reaction in msg.reactions" :key="reaction.id"
                 class="reaction-pill badge rounded-pill bg-light text-dark border"
                 :class="{ 'my-reaction': reaction.user.id === loggedInUserId }"
                 @click.stop="handleRemoveReaction(msg.id, reaction)"
-                :title="reaction.user.username"
               >
                 {{ reaction.emoji }}
               </span>
@@ -296,7 +268,6 @@ const getRepliedMessage = (replyId) => {
               <small class="message-timestamp">
                 {{ new Date(msg.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) }}
               </small>
-              
               <div v-if="msg.sender.id === loggedInUserId" class="message-status">
                 <svg v-if="!msg.status" class="feather status-icon"><use href="/feather-sprite-v4.29.0.svg#clock" /></svg>
                 <svg v-else-if="msg.status === 'sent' || msg.status === 'received'" class="feather status-icon"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
@@ -309,10 +280,10 @@ const getRepliedMessage = (replyId) => {
           </div>
 
           <div class="actions-group d-flex gap-1">
-            <button class="btn btn-sm btn-outline-secondary action-btn" @click.stop="startReply(msg)" title="Rispondi">
+            <button class="btn btn-sm btn-outline-secondary action-btn" @click.stop="startReply(msg)">
               <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#corner-up-left" /></svg>
             </button>
-            <button class="btn btn-sm btn-outline-secondary action-btn" @click.stop="openForwardModal(msg)" title="Inoltra">
+            <button class="btn btn-sm btn-outline-secondary action-btn" @click.stop="openForwardModal(msg)">
               <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#share-2" /></svg>
             </button>
             <button v-if="msg.sender.id === loggedInUserId" class="btn btn-sm btn-outline-danger action-btn" @click.stop="handleDeleteMessage(msg.id)">
@@ -323,9 +294,7 @@ const getRepliedMessage = (replyId) => {
                 <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#smile" /></svg>
               </button>
               <div v-if="activeReactionMenuId === msg.id" class="emoji-picker shadow-sm">
-                <span v-for="emoji in availableEmojis" :key="emoji" class="emoji-option" @click.stop="handleAddReaction(msg.id, emoji)">
-                  {{ emoji }}
-                </span>
+                <span v-for="emoji in availableEmojis" :key="emoji" class="emoji-option" @click.stop="handleAddReaction(msg.id, emoji)">{{ emoji }}</span>
               </div>
             </div>
           </div>
@@ -333,7 +302,6 @@ const getRepliedMessage = (replyId) => {
       </div>
       
       <div class="message-input-area mt-auto">
-        
         <div v-if="replyingToMsg" class="reply-bar alert alert-secondary d-flex justify-content-between align-items-center py-2 mb-2">
           <div class="d-flex align-items-center border-start border-4 border-primary ps-2">
             <div>
@@ -344,7 +312,7 @@ const getRepliedMessage = (replyId) => {
               </small>
             </div>
           </div>
-          <button type="button" class="btn-close" aria-label="Close" @click="cancelReply"></button>
+          <button type="button" class="btn-close" @click="cancelReply"></button>
         </div>
 
         <div v-if="selectedImagePreview" class="p-2 mb-2 border rounded bg-light d-flex align-items-center justify-content-between">
@@ -352,28 +320,16 @@ const getRepliedMessage = (replyId) => {
             <img :src="selectedImagePreview" height="60" class="rounded border bg-white">
             <span class="small text-muted">Pronta per l'invio</span>
           </div>
-          <button class="btn btn-sm btn-close" @click="removeSelectedImage" title="Rimuovi foto"></button>
+          <button class="btn btn-sm btn-close" @click="removeSelectedImage"></button>
         </div>
 
         <form class="d-flex gap-2 align-items-center" @submit.prevent="handleSendMessage">
-          <label class="btn btn-outline-secondary upload-btn" title="Allega Foto">
+          <label class="btn btn-outline-secondary upload-btn">
             <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#camera" /></svg>
             <input type="file" accept="image/*" class="d-none" @change="onFileSelect" :disabled="isSending">
           </label>
-
-          <input 
-            v-model="newMessageText" 
-            type="text" 
-            class="form-control" 
-            placeholder="Scrivi un messaggio..."
-            :disabled="isSending"
-            autocomplete="off"
-          >
-          <button 
-            type="submit" 
-            class="btn btn-primary" 
-            :disabled="isSending || (newMessageText.trim() === '' && !selectedImageFile)"
-          >
+          <input v-model="newMessageText" type="text" class="form-control" placeholder="Scrivi..." :disabled="isSending">
+          <button type="submit" class="btn btn-primary" :disabled="isSending || (newMessageText.trim() === '' && !selectedImageFile)">
             <LoadingSpinner v-if="isSending" />
             <svg v-else class="feather" style="width: 20px; height: 20px;"><use href="/feather-sprite-v4.29.0.svg#send" /></svg>
           </button>
@@ -399,59 +355,32 @@ const getRepliedMessage = (replyId) => {
 </template>
 
 <style scoped>
+/* (Stili identici al file precedente) */
 .chat-view { height: calc(100vh - 100px); }
 .chat-header { flex-shrink: 0; }
 .message-list { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; }
-
 .message-wrapper { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 10px; }
 .sent-wrapper { flex-direction: row-reverse; }
-
 .actions-group { opacity: 0; transition: opacity 0.2s ease; }
 .message-wrapper:hover .actions-group, .active-menu .actions-group { opacity: 1; }
-
-.action-btn, .info-btn {
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  padding: 0 !important; width: 30px !important; height: 30px !important; border-radius: 4px;
-}
+.action-btn, .info-btn { display: flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; width: 30px !important; height: 30px !important; border-radius: 4px; }
 .action-btn svg, .info-btn svg { width: 16px; height: 16px; margin: 0 !important; vertical-align: middle; }
-
-.upload-btn {
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  padding: 0 !important; width: 38px !important; height: 38px !important; cursor: pointer; border-radius: 4px;
-}
+.upload-btn { display: flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; width: 38px !important; height: 38px !important; cursor: pointer; border-radius: 4px; }
 .upload-btn svg { width: 20px; height: 20px; margin: 0 !important; vertical-align: middle; }
-
-.emoji-picker {
-  position: absolute; top: 35px; left: 0;
-  background: white; border: 1px solid #ddd; border-radius: 8px; padding: 5px;
-  display: flex; gap: 5px; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
+.emoji-picker { position: absolute; top: 35px; left: 0; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 5px; display: flex; gap: 5px; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
 .sent-wrapper .emoji-picker { left: auto; right: 0; }
 .emoji-option { cursor: pointer; font-size: 1.2rem; padding: 2px 5px; border-radius: 4px; }
 .emoji-option:hover { background-color: #f0f0f0; }
-
-.message-bubble {
-  background-color: #f1f0f0; border-radius: 12px; padding: 10px 15px;
-  max-width: 70%; position: relative; word-wrap: break-word;
-}
+.message-bubble { background-color: #f1f0f0; border-radius: 12px; padding: 10px 15px; max-width: 70%; position: relative; word-wrap: break-word; }
 .message-bubble.sent { background-color: #dcf8c6; }
 .message-sender { font-size: 0.8rem; font-weight: bold; color: #075E54; margin-bottom: 4px; }
-
 .reactions-container { display: flex; flex-wrap: wrap; gap: 4px; }
 .reaction-pill { cursor: pointer; font-size: 0.85rem; padding: 2px 6px !important; border: 1px solid #ddd; }
 .reaction-pill:hover { background-color: #e2e2e2 !important; }
 .reaction-pill.my-reaction { background-color: #d1e7dd !important; border-color: #a3cfbb !important; }
-
 .message-input-area { padding: 1rem; border-top: 1px solid #eee; flex-shrink: 0; }
-
 .reply-bar { border-radius: 8px; font-size: 0.9rem; }
-.reply-preview-bubble {
-  background-color: rgba(0,0,0,0.05);
-  border-radius: 6px; padding: 6px 10px;
-  border-left: 4px solid #2470dc;
-  font-size: 0.85rem; margin-bottom: 5px;
-}
-
+.reply-preview-bubble { background-color: rgba(0,0,0,0.05); border-radius: 6px; padding: 6px 10px; border-left: 4px solid #2470dc; font-size: 0.85rem; margin-bottom: 5px; }
 .message-timestamp { font-size: 0.70rem; color: #999; }
 .status-icon { width: 15px; height: 15px; color: #999; vertical-align: middle; margin: 0 !important; }
 .text-primary { color: #0d6efd !important; }
