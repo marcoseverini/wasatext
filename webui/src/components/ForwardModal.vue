@@ -1,83 +1,157 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { apiGetMyConversations, apiForwardMessage } from '@/services/api.js';
-import ErrorMsg from '@/components/ErrorMsg.vue';
+import { apiGetMyConversations, apiSearchUsers, apiSendMessage } from '@/services/api.js';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
+// Riceviamo il contenuto e il tipo, così possiamo "clonare" il messaggio
+// anche verso utenti con cui non abbiamo ancora una chat (creandola al volo).
 const props = defineProps({
   show: Boolean,
-  messageId: String // L'ID del messaggio da inoltrare
+  content: String,
+  type: String
 });
 
 const emit = defineEmits(['close', 'forward-success']);
 
-const conversations = ref([]);
-const loading = ref(true);
-const sending = ref(false);
-const errorMsg = ref('');
+const recentConversations = ref([]);
+const searchResults = ref([]);
+const searchQuery = ref('');
+const loading = ref(false);
+const sendingToId = ref(null); // Per mostrare lo spinner sul bottone specifico
 
-// Carica la lista delle chat dove posso inoltrare
+// 1. Carichiamo le chat recenti all'apertura per comodità
 onMounted(async () => {
   try {
     loading.value = true;
     const data = await apiGetMyConversations();
-    conversations.value = data.conversations || [];
-  } catch (err) {
-    errorMsg.value = "Impossibile caricare le conversazioni: " + err.message;
+    recentConversations.value = data.conversations || [];
+  } catch (e) {
+    console.error("Errore caricamento chat:", e);
   } finally {
     loading.value = false;
   }
 });
 
-const handleForward = async (targetConvId) => {
-  if (sending.value) return;
-  sending.value = true;
+// 2. Funzione per cercare NUOVI utenti (richiesta del prof)
+const handleSearch = async () => {
+  if (searchQuery.value.trim().length < 2) return;
   
+  loading.value = true;
+  searchResults.value = []; // Pulisce i risultati vecchi
   try {
-    await apiForwardMessage(targetConvId, props.messageId);
-    alert("Messaggio inoltrato!");
-    emit('forward-success'); // Chiude il modale
-  } catch (err) {
-    alert("Errore inoltro: " + err.message);
+    const data = await apiSearchUsers(searchQuery.value);
+    searchResults.value = data.users || [];
+  } catch (e) {
+    console.error("Errore ricerca:", e);
   } finally {
-    sending.value = false;
+    loading.value = false;
+  }
+};
+
+// 3. Funzione di inoltro effettivo
+const forwardTo = async (destId) => {
+  if (!props.content) return;
+  
+  sendingToId.value = destId;
+  try {
+    // Usiamo apiSendMessage: se la chat non esiste, il backend dovrebbe crearla
+    // o inviare comunque il messaggio all'utente target.
+    await apiSendMessage(destId, props.content, props.type);
+    
+    alert("Messaggio inoltrato!");
+    emit('forward-success');
+  } catch (e) {
+    alert("Errore nell'inoltro: " + e.message);
+  } finally {
+    sendingToId.value = null;
   }
 };
 </script>
 
 <template>
-  <div v-if="show" class="modal-overlay" @click.self="emit('close')">
-    <div class="modal-content card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="modal-title mb-0">Inoltra a...</h5>
-        <button type="button" class="btn-close" @click="emit('close')" />
+  <div v-if="show" class="modal-overlay" @click.self="$emit('close')">
+    <div class="modal-content card shadow">
+      
+      <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+        <h5 class="modal-title mb-0 h6">Inoltra messaggio a...</h5>
+        <button type="button" class="btn-close" @click="$emit('close')" />
       </div>
       
-      <div class="card-body p-0"> <ErrorMsg v-if="errorMsg" :msg="errorMsg" class="m-3"/>
-
-        <div v-if="loading" class="text-center p-4">
-          <LoadingSpinner />
+      <div class="card-body d-flex flex-column p-3" style="height: 400px;">
+        
+        <div class="input-group mb-3">
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            class="form-control" 
+            placeholder="Cerca utente o gruppo..." 
+            @keyup.enter="handleSearch"
+          >
+          <button class="btn btn-primary" @click="handleSearch" :disabled="loading">
+            Cerca
+          </button>
         </div>
 
-        <div v-else class="list-group list-group-flush">
-          <button 
-            v-for="convo in conversations" 
-            :key="convo.id"
-            class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3"
-            @click="handleForward(convo.id)"
-            :disabled="sending"
-          >
-            <img 
-              :src="convo.photoUrl || 'https://placehold.co/40x40/e9ecef/000000?text=' + convo.name.charAt(0).toUpperCase()" 
-              class="rounded-circle flex-shrink-0 border" width="40" height="40"
-              style="object-fit: cover;"
-            >
-            <div class="text-truncate fw-bold">{{ convo.name }}</div>
-            
-            </button>
+        <div class="list-container flex-grow-1 overflow-auto">
+          
+          <div v-if="loading" class="text-center p-3">
+            <LoadingSpinner />
+          </div>
 
-          <div v-if="conversations.length === 0" class="text-center p-4 text-muted">
-            Nessuna conversazione attiva.
+          <div v-else>
+            
+            <div v-if="searchResults.length > 0">
+              <h6 class="text-primary small fw-bold text-uppercase mt-2 mb-2 px-1">Risultati Ricerca</h6>
+              <div 
+                v-for="user in searchResults" 
+                :key="user.id" 
+                class="d-flex align-items-center justify-content-between p-2 border-bottom user-row"
+              >
+                <div class="d-flex align-items-center text-truncate">
+                  <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 32px; height: 32px;">
+                    {{ user.username.charAt(0).toUpperCase() }}
+                  </div>
+                  <span class="text-truncate">{{ user.username }}</span>
+                </div>
+                
+                <button class="btn btn-sm btn-outline-primary ms-2" @click="forwardTo(user.id)" :disabled="sendingToId !== null">
+                  <span v-if="sendingToId === user.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span v-else>Invia</span>
+                </button>
+              </div>
+            </div>
+            
+            <div v-else-if="searchQuery.length >= 2 && searchResults.length === 0" class="text-center text-muted mt-3">
+              Nessun utente trovato.
+            </div>
+
+            <div v-if="searchResults.length === 0 && recentConversations.length > 0">
+              <h6 class="text-muted small fw-bold text-uppercase mt-3 mb-2 px-1">Recenti</h6>
+              <div 
+                v-for="convo in recentConversations" 
+                :key="convo.id"
+                class="d-flex align-items-center justify-content-between p-2 border-bottom user-row"
+              >
+                <div class="d-flex align-items-center text-truncate">
+                   <img 
+                    :src="convo.photoUrl || 'https://placehold.co/32x32/e9ecef/000000?text=' + convo.name.charAt(0).toUpperCase()" 
+                    class="rounded-circle me-2 border flex-shrink-0" width="32" height="32"
+                    style="object-fit: cover;"
+                   >
+                   <span class="text-truncate">{{ convo.name }}</span>
+                </div>
+                
+                <button class="btn btn-sm btn-outline-secondary ms-2" @click="forwardTo(convo.id)" :disabled="sendingToId !== null">
+                  <span v-if="sendingToId === convo.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span v-else>Invia</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="recentConversations.length === 0 && searchResults.length === 0" class="text-center p-4 text-muted">
+              Cerca un utente per iniziare.
+            </div>
+
           </div>
         </div>
       </div>
@@ -87,19 +161,17 @@ const handleForward = async (targetConvId) => {
 
 <style scoped>
 .modal-overlay {
-  position: fixed;
-  top: 0; left: 0;
+  position: fixed; top: 0; left: 0;
   width: 100%; height: 100%;
   background: rgba(0,0,0,0.5);
   display: flex; justify-content: center; align-items: center;
   z-index: 2000;
 }
 .modal-content {
-  max-width: 400px;
-  max-height: 80vh;
-  overflow-y: auto;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  width: 95%; max-width: 450px;
+  background-color: white; border-radius: 8px;
+}
+.user-row:hover {
+  background-color: #f8f9fa;
 }
 </style>

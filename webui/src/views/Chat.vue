@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'; 
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'; 
 import { useRoute, useRouter } from 'vue-router'; 
 import { 
   apiGetConversation, 
@@ -16,15 +16,22 @@ import ForwardModal from '@/components/ForwardModal.vue';
 const conversation = ref(null); 
 const loading = ref(true); 
 const errorMsg = ref(''); 
+
+// Variabili per l'invio messaggi
 const newMessageText = ref(''); 
+const selectedImageFile = ref(null);     // File fisico
+const selectedImagePreview = ref(null);  // Anteprima base64
 const isSending = ref(false); 
+
 const router = useRouter();
 const showGroupInfo = ref(false); 
+
+// Variabili per l'inoltro
 const showForwardModal = ref(false);
-const msgIdToForward = ref(null);
+const msgContentToForward = ref(null);
+const msgTypeToForward = ref(null);
 
 const replyingToMsg = ref(null); 
-
 const availableEmojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 const activeReactionMenuId = ref(null);
 
@@ -35,19 +42,33 @@ const loggedInUserId = localStorage.getItem('sessionToken');
 // Ref per lo scroll automatico
 const messagesContainer = ref(null);
 
-const refreshConversation = async () => {
+// Variabile per il polling (auto-refresh)
+let pollingInterval = null;
+
+// --- GESTIONE DATI E POLLING ---
+
+const refreshConversation = async (showLoading = false) => {
   try {
+    if (showLoading) loading.value = true;
     const data = await apiGetConversation(convId);
     if (data.messages) data.messages.reverse();
+    
+    // Controllo se è arrivato un nuovo messaggio per fare scroll in basso
+    const oldLastMsg = conversation.value?.messages?.at(-1)?.id;
+    const newLastMsg = data.messages?.at(-1)?.id;
+    
     conversation.value = data;
-  } catch (err) {
-    console.error(err);
-  }
-};
 
-const onLeftGroup = () => {
-  showGroupInfo.value = false;
-  router.push('/'); 
+    if (oldLastMsg !== newLastMsg) {
+      scrollToBottom();
+    }
+  } catch (err) {
+    console.error("Errore refresh:", err);
+    // Non mostriamo l'errore a video durante il polling per non disturbare l'utente
+    if (showLoading) errorMsg.value = err.message;
+  } finally {
+    if (showLoading) loading.value = false;
+  }
 };
 
 const scrollToBottom = () => {
@@ -58,101 +79,118 @@ const scrollToBottom = () => {
   });
 };
 
-// Funzione chiamata dal click sul bottone "Inoltra"
-const openForwardModal = (msg) => {
-  msgIdToForward.value = msg.id;
-  showForwardModal.value = true;
-};
-
-// Quando l'inoltro finisce con successo
-const onForwardSuccess = async () => {
-  showForwardModal.value = false;
-  msgIdToForward.value = null;
-  
-  // --- AGGIUNTO ---
-  // Ricarica la conversazione per mostrare il messaggio appena inoltrato
-  // (utile se ho inoltrato proprio in questa chat)
-  await refreshConversation();
-  scrollToBottom();
-  // ----------------
-};
-
 onMounted(async () => { 
-  try {
-    loading.value = true;
-    errorMsg.value = '';
-    const data = await apiGetConversation(convId);
-    if (data.messages) {
-      data.messages.reverse(); 
-    }
-    conversation.value = data;
-    scrollToBottom(); 
-  } catch (err) {
-    errorMsg.value = err.message;
-  } finally {
-    loading.value = false;
-  }
+  // Caricamento iniziale
+  await refreshConversation(true);
+  scrollToBottom();
+
+  // Avvio polling ogni 3 secondi per aggiornare i messaggi e le spunte
+  pollingInterval = setInterval(() => {
+    refreshConversation(false); // false = niente spinner di caricamento
+  }, 3000);
 });
 
-// --- INVIO MESSAGGI (TESTO) ---
+onUnmounted(() => {
+  // Pulizia intervallo quando si cambia pagina
+  if (pollingInterval) clearInterval(pollingInterval);
+});
+
+// --- GESTIONE INVIO (FOTO + TESTO) ---
+
+// 1. Selezione File
+const onFileSelect = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 1000000) { // 1MB
+    alert("L'immagine è troppo grande (max 1MB).");
+    return;
+  }
+
+  // Anteprima
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    selectedImagePreview.value = e.target.result; 
+    selectedImageFile.value = file; 
+  };
+  reader.readAsDataURL(file);
+  
+  // Reset input per permettere di riselezionare lo stesso file
+  event.target.value = ''; 
+};
+
+// 2. Rimozione File selezionato
+const removeSelectedImage = () => {
+  selectedImageFile.value = null;
+  selectedImagePreview.value = null;
+};
+
+// 3. Invio combinato
 const handleSendMessage = async () => {
-  if (newMessageText.value.trim() === '') return;
+  // Se non c'è né testo né foto, non fare nulla
+  if (newMessageText.value.trim() === '' && !selectedImageFile.value) return;
+
   isSending.value = true;
   errorMsg.value = '';
+  const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
+
   try {
-    const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
-    await apiSendMessage(convId, newMessageText.value, 'text', replyId);
-    await refreshConversation(); 
-    scrollToBottom();
+    // A) Se c'è una FOTO, inviala
+    if (selectedImagePreview.value) {
+      await apiSendMessage(convId, selectedImagePreview.value, 'photo', replyId);
+    }
+
+    // B) Se c'è TESTO (didascalia), invialo
+    if (newMessageText.value.trim() !== '') {
+      // Se abbiamo già inviato la foto, il testo potrebbe non dover essere una "reply" alla foto stessa,
+      // ma per semplicità manteniamo il replyId originale se presente.
+      await apiSendMessage(convId, newMessageText.value, 'text', replyId);
+    }
+
+    // Reset completo
     newMessageText.value = '';
-    replyingToMsg.value = null; 
+    removeSelectedImage();
+    replyingToMsg.value = null;
+    
+    // Aggiorna subito la chat
+    await refreshConversation(false);
+    scrollToBottom();
+
   } catch (err) {
-    errorMsg.value = err.message;
+    errorMsg.value = "Errore invio: " + err.message;
   } finally {
     isSending.value = false;
   }
 };
 
-// --- INVIO FOTO ---
-const handlePhotoUpload = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
+// --- ALTRE FUNZIONI ---
 
-  if (file.size > 1000000) {
-    alert("L'immagine è troppo grande (max 1MB).");
-    return;
-  }
+const onLeftGroup = () => {
+  showGroupInfo.value = false;
+  router.push('/'); 
+};
 
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64String = e.target.result;
-    isSending.value = true;
-    errorMsg.value = '';
-    
-    try {
-      const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
-      await apiSendMessage(convId, base64String, 'photo', replyId);
-      await refreshConversation();
-      scrollToBottom();
-      replyingToMsg.value = null;
-    } catch (err) {
-      errorMsg.value = "Errore invio foto: " + err.message;
-    } finally {
-      isSending.value = false;
-      event.target.value = '';
-    }
-  };
-  reader.readAsDataURL(file);
+// Inoltro: prepariamo i dati da passare al modale
+const openForwardModal = (msg) => {
+  msgContentToForward.value = msg.content;
+  msgTypeToForward.value = msg.contentType;
+  showForwardModal.value = true;
+};
+
+const onForwardSuccess = async () => {
+  showForwardModal.value = false;
+  msgContentToForward.value = null;
+  msgTypeToForward.value = null;
+  // Ricarichiamo nel caso avessimo inoltrato a questa stessa chat
+  await refreshConversation(false);
+  scrollToBottom();
 };
 
 const handleDeleteMessage = async (messageId) => {
   if (!window.confirm("Sei sicuro di voler cancellare questo messaggio?")) return;
-  errorMsg.value = '';
   try {
     await apiDeleteMessage(messageId);
-    conversation.value.messages = conversation.value.messages.filter(
-      (msg) => msg.id !== messageId
-    );
+    await refreshConversation(false); // Ricarica per aggiornare la lista
   } catch (err) {
     errorMsg.value = err.message;
   }
@@ -165,13 +203,9 @@ const toggleReactionMenu = (msgId) => {
 const handleAddReaction = async (msgId, emoji) => {
   activeReactionMenuId.value = null; 
   try {
-    const reaction = await apiAddReaction(msgId, emoji);
-    const msg = conversation.value.messages.find(m => m.id === msgId);
-    if (msg) {
-      if (!msg.reactions) msg.reactions = [];
-      msg.reactions = msg.reactions.filter(r => r.user.id !== loggedInUserId);
-      msg.reactions.push(reaction);
-    }
+    await apiAddReaction(msgId, emoji);
+    // Non modifichiamo l'array localmente, ricarichiamo per avere lo stato server corretto
+    await refreshConversation(false); 
   } catch (err) {
     errorMsg.value = "Impossibile reagire: " + err.message;
   }
@@ -181,10 +215,7 @@ const handleRemoveReaction = async (msgId, reaction) => {
   if (reaction.user.id !== loggedInUserId) return;
   try {
     await apiRemoveReaction(msgId, reaction.id);
-    const msg = conversation.value.messages.find(m => m.id === msgId);
-    if (msg && msg.reactions) {
-      msg.reactions = msg.reactions.filter(r => r.id !== reaction.id);
-    }
+    await refreshConversation(false);
   } catch (err) {
     errorMsg.value = "Impossibile rimuovere reazione: " + err.message;
   }
@@ -211,7 +242,7 @@ const getRepliedMessage = (replyId) => {
       <LoadingSpinner />
     </div>
 
-    <div v-if="!loading && !errorMsg && conversation" class="d-flex flex-column h-100">
+    <div v-if="!loading && conversation" class="d-flex flex-column h-100">
       
       <div class="d-flex align-items-center pt-3 pb-2 mb-3 border-bottom chat-header justify-content-between">
         <div class="d-flex align-items-center">
@@ -251,7 +282,6 @@ const getRepliedMessage = (replyId) => {
                 <small class="fw-bold d-block text-primary">
                   {{ getRepliedMessage(msg.replyToMsgId).sender.username }}
                 </small>
-                
                 <small class="text-truncate d-block" style="max-width: 200px;">
                   <span v-if="getRepliedMessage(msg.replyToMsgId).contentType === 'photo'">📷 [Foto]</span>
                   <span v-else>{{ getRepliedMessage(msg.replyToMsgId).content }}</span>
@@ -293,9 +323,7 @@ const getRepliedMessage = (replyId) => {
               
               <div v-if="msg.sender.id === loggedInUserId" class="message-status">
                 <svg v-if="!msg.status" class="feather status-icon"><use href="/feather-sprite-v4.29.0.svg#clock" /></svg>
-                
                 <svg v-else-if="msg.status === 'sent' || msg.status === 'received'" class="feather status-icon"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
-                
                 <div v-else-if="msg.status === 'read'" class="d-flex">
                   <svg class="feather status-icon text-primary"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
                   <svg class="feather status-icon text-primary overlap-icon"><use href="/feather-sprite-v4.29.0.svg#check" /></svg>
@@ -305,35 +333,19 @@ const getRepliedMessage = (replyId) => {
           </div>
 
           <div class="actions-group d-flex gap-1">
-
-            <button 
-              class="btn btn-sm btn-outline-secondary action-btn"
-              @click.stop="startReply(msg)"
-              title="Rispondi"
-            >
+            <button class="btn btn-sm btn-outline-secondary action-btn" @click.stop="startReply(msg)" title="Rispondi">
               <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#corner-up-left" /></svg>
             </button>
-
             <button class="btn btn-sm btn-outline-secondary action-btn" @click.stop="openForwardModal(msg)" title="Inoltra">
               <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#share-2" /></svg>
             </button>
-
-            <button 
-              v-if="msg.sender.id === loggedInUserId"
-              class="btn btn-sm btn-outline-danger action-btn"
-              @click.stop="handleDeleteMessage(msg.id)"
-            >
+            <button v-if="msg.sender.id === loggedInUserId" class="btn btn-sm btn-outline-danger action-btn" @click.stop="handleDeleteMessage(msg.id)">
               <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#trash-2" /></svg>
             </button>
-
             <div class="position-relative">
-              <button 
-                class="btn btn-sm btn-outline-secondary action-btn"
-                @click.stop="toggleReactionMenu(msg.id)"
-              >
+              <button class="btn btn-sm btn-outline-secondary action-btn" @click.stop="toggleReactionMenu(msg.id)">
                 <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#smile" /></svg>
               </button>
-
               <div v-if="activeReactionMenuId === msg.id" class="emoji-picker shadow-sm">
                 <span v-for="emoji in availableEmojis" :key="emoji" class="emoji-option" @click.stop="handleAddReaction(msg.id, emoji)">
                   {{ emoji }}
@@ -341,7 +353,6 @@ const getRepliedMessage = (replyId) => {
               </div>
             </div>
           </div>
-
         </div>
       </div>
       
@@ -360,11 +371,18 @@ const getRepliedMessage = (replyId) => {
           <button type="button" class="btn-close" aria-label="Close" @click="cancelReply"></button>
         </div>
 
+        <div v-if="selectedImagePreview" class="p-2 mb-2 border rounded bg-light d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <img :src="selectedImagePreview" height="60" class="rounded border bg-white">
+            <span class="small text-muted">Pronta per l'invio</span>
+          </div>
+          <button class="btn btn-sm btn-close" @click="removeSelectedImage" title="Rimuovi foto"></button>
+        </div>
+
         <form class="d-flex gap-2 align-items-center" @submit.prevent="handleSendMessage">
-          
-          <label class="btn btn-outline-secondary upload-btn" title="Invia Foto">
+          <label class="btn btn-outline-secondary upload-btn" title="Allega Foto">
             <svg class="feather"><use href="/feather-sprite-v4.29.0.svg#camera" /></svg>
-            <input type="file" accept="image/*" class="d-none" @change="handlePhotoUpload" :disabled="isSending">
+            <input type="file" accept="image/*" class="d-none" @change="onFileSelect" :disabled="isSending">
           </label>
 
           <input 
@@ -375,8 +393,12 @@ const getRepliedMessage = (replyId) => {
             :disabled="isSending"
             autocomplete="off"
           >
-          <button type="submit" class="btn btn-primary" :disabled="isSending || newMessageText.trim() === ''">
-            <LoadingSpinner v-if="isSending && newMessageText.trim() !== ''" />
+          <button 
+            type="submit" 
+            class="btn btn-primary" 
+            :disabled="isSending || (newMessageText.trim() === '' && !selectedImageFile)"
+          >
+            <LoadingSpinner v-if="isSending" />
             <svg v-else class="feather" style="width: 20px; height: 20px;"><use href="/feather-sprite-v4.29.0.svg#send" /></svg>
           </button>
         </form>
@@ -391,7 +413,8 @@ const getRepliedMessage = (replyId) => {
     <ForwardModal 
       v-if="showForwardModal"
       :show="showForwardModal"
-      :messageId="msgIdToForward"
+      :content="msgContentToForward"
+      :type="msgTypeToForward"
       @close="showForwardModal = false"
       @forward-success="onForwardSuccess"
     />
@@ -410,24 +433,17 @@ const getRepliedMessage = (replyId) => {
 .actions-group { opacity: 0; transition: opacity 0.2s ease; }
 .message-wrapper:hover .actions-group, .active-menu .actions-group { opacity: 1; }
 
-.action-btn {
+.action-btn, .info-btn {
   display: flex !important; align-items: center !important; justify-content: center !important;
   padding: 0 !important; width: 30px !important; height: 30px !important; border-radius: 4px;
 }
-.action-btn svg { width: 16px; height: 16px; margin: 0 !important; vertical-align: middle; }
+.action-btn svg, .info-btn svg { width: 16px; height: 16px; margin: 0 !important; vertical-align: middle; }
 
 .upload-btn {
   display: flex !important; align-items: center !important; justify-content: center !important;
   padding: 0 !important; width: 38px !important; height: 38px !important; cursor: pointer; border-radius: 4px;
 }
 .upload-btn svg { width: 20px; height: 20px; margin: 0 !important; vertical-align: middle; }
-
-/* STILE INFO BUTTON (NUOVO) */
-.info-btn {
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  padding: 0 !important; width: 30px !important; height: 30px !important; border-radius: 4px;
-}
-.info-btn svg { width: 16px; height: 16px; margin: 0 !important; vertical-align: middle; }
 
 .emoji-picker {
   position: absolute; top: 35px; left: 0;
@@ -460,39 +476,8 @@ const getRepliedMessage = (replyId) => {
   font-size: 0.85rem; margin-bottom: 5px;
 }
 
-/* Rimuovi il vecchio stile .message-timestamp se faceva conflitti, 
-   ora usiamo un container flex */
-.message-timestamp {
-  font-size: 0.70rem;
-  color: #999;
-}
-
-/* Stile base per le icone di stato */
-.status-icon {
-  width: 15px;
-  height: 15px;
-  color: #999;
-  vertical-align: middle;
-  
-  /* --- MODIFICA FONDAMENTALE --- */
-  margin: 0 !important; /* Rimuove il margine destro di 8px ereditato da App.vue */
-  /* ----------------------------- */
-}
-
-/* Colore blu per le spunte di lettura */
-.text-primary {
-  color: #0d6efd !important;
-}
-
-/* Sovrapposizione stile WhatsApp */
-.overlap-icon {
-  /* Ora che non c'è il margine dell'altra icona in mezzo, 
-     -8px è sufficiente per sovrapporle a metà */
-  margin-left: -8px !important; 
-  
-  /* Opzionale: sposta la seconda spunta leggermente in alto 
-     per dare l'effetto "impilato" tipico */
-  margin-top: -3px; 
-}
-
+.message-timestamp { font-size: 0.70rem; color: #999; }
+.status-icon { width: 15px; height: 15px; color: #999; vertical-align: middle; margin: 0 !important; }
+.text-primary { color: #0d6efd !important; }
+.overlap-icon { margin-left: -8px !important; margin-top: -3px; }
 </style>
