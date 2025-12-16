@@ -21,7 +21,7 @@ const searchResults = ref([]);
 const searchQuery = ref('');
 const loading = ref(false);
 const sendingToId = ref(null); 
-const hasSearched = ref(false); // NUOVO: Traccia se abbiamo premuto "Cerca"
+const hasSearched = ref(false);
 
 onMounted(async () => {
   try {
@@ -36,10 +36,11 @@ onMounted(async () => {
 });
 
 const handleSearch = async () => {
-  if (searchQuery.value.trim().length < 2) return;
+  // MODIFICA QUI: Ora basta 1 carattere per cercare
+  if (searchQuery.value.trim().length < 1) return;
   
   loading.value = true;
-  hasSearched.value = true; // ORA diciamo che la ricerca è stata fatta
+  hasSearched.value = true; 
   searchResults.value = [];
   
   try {
@@ -61,12 +62,10 @@ const handleForward = async (item, isSearchResult) => {
     let targetConvId = item.id;
 
     if (isSearchResult) {
-      // Se è un utente dalla ricerca, recuperiamo/creiamo la conversazione
       const convData = await apiStartConversation(item.id);
       targetConvId = convData.id;
     }
 
-    // Inviamo il messaggio (testo + foto)
     await apiSendMessage(targetConvId, props.text, props.photo);
     
     alert("Messaggio inoltrato!");
@@ -132,7 +131,7 @@ const handleForward = async (item, isSearchResult) => {
               </div>
             </div>
             
-            <div v-else-if="hasSearched && searchResults.length === 0" class="text-center text-muted mt-3">
+            <div v-else-if="hasSearched && searchQuery.length >= 1 && searchResults.length === 0" class="text-center text-muted mt-3">
               Nessun utente trovato.
             </div>
 
