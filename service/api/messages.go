@@ -90,12 +90,9 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 	_ = json.NewEncoder(w).Encode(newMessage)
 }
 
-// ... (le altre funzioni forwardMessage, deleteMessage, commentMessage rimangono uguali,
-// a parte forwardMessage che userà la nuova struttura DB internamente, vedi db_messages.go)
+// forwardMessage, deleteMessage e reactions restano simili al vecchio ma per completezza:
 
 func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// ... Implementazione standard di forwardMessage (invariata nel controller, ma il DB cambia sotto)
-	// Copio per completezza se vuoi sovrascrivere tutto il file
 	userID, err := rt.getUserIdFromAuth(r)
 	if err != nil {
 		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())

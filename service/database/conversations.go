@@ -9,7 +9,7 @@ import (
 )
 
 func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID string) (string, error) {
-	// ... INVARIATO (La creazione chat non tocca i messaggi)
+	// ... (Parte invariata)
 	var existingConvID string
 	query := `
 		SELECT c.id FROM conversations c JOIN conversation_members m ON c.id = m.conversationId
@@ -99,7 +99,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	}
 	conversation.Members = members
 
-	// 5. MESSAGGI - Query Aggiornata
+	// 5. MESSAGGI - Query Aggiornata (legge text e photoUrl)
 	msgRows, err := db.c.Query(`
         SELECT m.id, COALESCE(m.text, ''), COALESCE(m.photoUrl, ''), m.timestamp, m.replyToMsgId, m.status,
                u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
@@ -135,7 +135,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	}
 	msgRows.Close()
 
-	// 6. Reazioni (Invariato)
+	// 6. Reazioni
 	reactRows, err := db.c.Query(`SELECT r.id, r.messageId, r.emoji, u.id, u.username, u.photoUrl FROM reactions r JOIN users u ON r.userId = u.id WHERE r.messageId IN (SELECT id FROM messages WHERE conversationId = ?)`, conversationID)
 	if err != nil {
 		return conversation, fmt.Errorf("could not get reactions: %w", err)

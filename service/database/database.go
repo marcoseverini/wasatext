@@ -85,9 +85,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating conversation_members table: %w", err)
 	}
 
-	// Messages Table (AGGIORNATA)
-	// Rimuoviamo 'content' e 'contentType'
-	// Aggiungiamo 'text' e 'photoUrl'
+	// Messages Table (AGGIORNATA: text e photoUrl invece di content)
 	sqlStmt = `CREATE TABLE IF NOT EXISTS messages (
 		id TEXT NOT NULL PRIMARY KEY,
 		conversationId TEXT NOT NULL,

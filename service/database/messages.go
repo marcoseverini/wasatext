@@ -125,8 +125,6 @@ func (db *appdbimpl) ForwardMessage(requestingUserID string, targetConvId string
 	}
 
 	// Fetch original message (Text + Photo)
-	// Nota: Scan gestisce NULL se usiamo sql.NullString, ma qui usiamo stringhe base.
-	// Dobbiamo usare COALESCE per evitare errori se uno dei due è NULL.
 	err = tx.QueryRow(`
         SELECT COALESCE(m.text, ''), COALESCE(m.photoUrl, '')
         FROM messages m
@@ -174,8 +172,6 @@ func (db *appdbimpl) ForwardMessage(requestingUserID string, targetConvId string
 }
 
 func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error) {
-	// ... INVARIATO (copia dal vecchio se vuoi, ma la logica è identica)
-	// La tabella reactions non è cambiata
 	var reaction Reaction
 	if len(emoji) == 0 || len(emoji) > 8 {
 		return reaction, fmt.Errorf("emoji non valida: %w", ErrBadRequest)
@@ -231,7 +227,6 @@ func (db *appdbimpl) AddReaction(requestingUserID string, messageID string, emoj
 }
 
 func (db *appdbimpl) RemoveReaction(requestingUserID string, reactionID string, messageID string) error {
-	// ... INVARIATO
 	var ownerId string
 	err := db.c.QueryRow("SELECT userId FROM reactions WHERE id = ? AND messageId = ?", reactionID, messageID).Scan(&ownerId)
 	if err != nil {
