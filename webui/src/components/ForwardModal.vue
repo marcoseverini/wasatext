@@ -1,10 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { apiGetMyConversations, apiSearchUsers, apiSendMessage } from '@/services/api.js';
+import { 
+  apiGetMyConversations, 
+  apiSearchUsers, 
+  apiSendMessage, 
+  apiStartConversation // Assicurati che questa sia in api.js
+} from '@/services/api.js';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
-// Riceviamo il contenuto e il tipo, così possiamo "clonare" il messaggio
-// anche verso utenti con cui non abbiamo ancora una chat (creandola al volo).
 const props = defineProps({
   show: Boolean,
   content: String,
@@ -17,9 +20,8 @@ const recentConversations = ref([]);
 const searchResults = ref([]);
 const searchQuery = ref('');
 const loading = ref(false);
-const sendingToId = ref(null); // Per mostrare lo spinner sul bottone specifico
+const sendingToId = ref(null); 
 
-// 1. Carichiamo le chat recenti all'apertura per comodità
 onMounted(async () => {
   try {
     loading.value = true;
@@ -32,12 +34,10 @@ onMounted(async () => {
   }
 });
 
-// 2. Funzione per cercare NUOVI utenti (richiesta del prof)
 const handleSearch = async () => {
   if (searchQuery.value.trim().length < 2) return;
-  
   loading.value = true;
-  searchResults.value = []; // Pulisce i risultati vecchi
+  searchResults.value = [];
   try {
     const data = await apiSearchUsers(searchQuery.value);
     searchResults.value = data.users || [];
@@ -48,15 +48,25 @@ const handleSearch = async () => {
   }
 };
 
-// 3. Funzione di inoltro effettivo
-const forwardTo = async (destId) => {
+// Funzione unificata per gestire l'inoltro
+const handleForward = async (item, isSearchResult) => {
   if (!props.content) return;
   
-  sendingToId.value = destId;
+  // Usiamo l'ID dell'elemento cliccato come riferimento per lo spinner
+  sendingToId.value = item.id;
+  
   try {
-    // Usiamo apiSendMessage: se la chat non esiste, il backend dovrebbe crearla
-    // o inviare comunque il messaggio all'utente target.
-    await apiSendMessage(destId, props.content, props.type);
+    let targetConvId = item.id;
+
+    // SE è un risultato di ricerca (Utente), dobbiamo prima trovare/creare la conversazione
+    if (isSearchResult) {
+      // apiStartConversation nel backend (conversations.go) "avvia o trova" la chat
+      const convData = await apiStartConversation(item.id);
+      targetConvId = convData.id;
+    }
+
+    // Ora inviamo il messaggio all'ID della conversazione reale
+    await apiSendMessage(targetConvId, props.content, props.type);
     
     alert("Messaggio inoltrato!");
     emit('forward-success');
@@ -84,7 +94,7 @@ const forwardTo = async (destId) => {
             v-model="searchQuery" 
             type="text" 
             class="form-control" 
-            placeholder="Cerca utente o gruppo..." 
+            placeholder="Cerca utente..." 
             @keyup.enter="handleSearch"
           >
           <button class="btn btn-primary" @click="handleSearch" :disabled="loading">
@@ -114,7 +124,7 @@ const forwardTo = async (destId) => {
                   <span class="text-truncate">{{ user.username }}</span>
                 </div>
                 
-                <button class="btn btn-sm btn-outline-primary ms-2" @click="forwardTo(user.id)" :disabled="sendingToId !== null">
+                <button class="btn btn-sm btn-outline-primary ms-2" @click="handleForward(user, true)" :disabled="sendingToId !== null">
                   <span v-if="sendingToId === user.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                   <span v-else>Invia</span>
                 </button>
@@ -141,7 +151,7 @@ const forwardTo = async (destId) => {
                    <span class="text-truncate">{{ convo.name }}</span>
                 </div>
                 
-                <button class="btn btn-sm btn-outline-secondary ms-2" @click="forwardTo(convo.id)" :disabled="sendingToId !== null">
+                <button class="btn btn-sm btn-outline-secondary ms-2" @click="handleForward(convo, false)" :disabled="sendingToId !== null">
                   <span v-if="sendingToId === convo.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                   <span v-else>Invia</span>
                 </button>
