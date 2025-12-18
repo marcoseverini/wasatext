@@ -258,7 +258,10 @@ const getRepliedMessage = (replyId) => {
                 @click.stop="handleRemoveReaction(msg.id, reaction)"
                 :title="reaction.user.username" 
               >
-                {{ reaction.emoji }} <span class="ms-1" style="font-size: 0.75rem; opacity: 0.8;">{{ reaction.user.username }}</span>
+                {{ reaction.emoji }} 
+                <span v-if="conversation.isGroup" class="ms-1" style="font-size: 0.75rem; opacity: 0.8;">
+                  {{ reaction.user.username }}
+                </span>
               </span>
             </div>
 
