@@ -26,7 +26,7 @@ const isSending = ref(false);
 const router = useRouter();
 const showGroupInfo = ref(false); 
 
-// Inoltro (AGGIORNATO: usa text e photo)
+// Inoltro
 const showForwardModal = ref(false);
 const msgTextToForward = ref(null);
 const msgPhotoToForward = ref(null);
@@ -109,7 +109,6 @@ const handleSendMessage = async () => {
   const replyId = replyingToMsg.value ? replyingToMsg.value.id : null;
 
   try {
-    // Chiamata API aggiornata (testo, foto)
     await apiSendMessage(
         convId, 
         newMessageText.value.trim(), 
@@ -135,9 +134,7 @@ const onLeftGroup = () => {
   router.push('/'); 
 };
 
-// Logica Inoltro Aggiornata
 const openForwardModal = (msg) => {
-  // Passiamo il contenuto esplicito al modale
   msgTextToForward.value = msg.text || '';
   msgPhotoToForward.value = msg.photoUrl || '';
   showForwardModal.value = true;
@@ -259,8 +256,9 @@ const getRepliedMessage = (replyId) => {
                 class="reaction-pill badge rounded-pill bg-light text-dark border"
                 :class="{ 'my-reaction': reaction.user.id === loggedInUserId }"
                 @click.stop="handleRemoveReaction(msg.id, reaction)"
+                :title="reaction.user.username" 
               >
-                {{ reaction.emoji }}
+                {{ reaction.emoji }} <span class="ms-1" style="font-size: 0.75rem; opacity: 0.8;">{{ reaction.user.username }}</span>
               </span>
             </div>
 
@@ -355,7 +353,6 @@ const getRepliedMessage = (replyId) => {
 </template>
 
 <style scoped>
-/* (Stili identici al file precedente) */
 .chat-view { height: calc(100vh - 100px); }
 .chat-header { flex-shrink: 0; }
 .message-list { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; }

@@ -3,7 +3,6 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'; 
 import { apiLogout, apiSearchUsers } from '@/services/api.js'; 
 
-// Importiamo TUTTI i modali qui perché i bottoni sono nella sidebar
 import ProfileModal from '@/components/ProfileModal.vue';
 import SearchModal from '@/components/SearchModal.vue';
 import CreateGroupModal from '@/components/CreateGroupModal.vue';
@@ -25,7 +24,6 @@ const handleLogout = () => {
   apiLogout();
 };
 
-// Aggiornamento Profilo
 const onProfileUpdated = ({ username, photoUrl }) => {
   currentUsername.value = username;
   currentPhotoUrl.value = photoUrl;
@@ -34,7 +32,6 @@ const onProfileUpdated = ({ username, photoUrl }) => {
   else localStorage.removeItem('photoUrl');
 };
 
-// Recupero dati freschi
 const fetchMyProfile = async () => {
   const myId = localStorage.getItem('sessionToken');
   const myName = localStorage.getItem('username');
@@ -49,7 +46,8 @@ const fetchMyProfile = async () => {
   } catch (e) { console.error(e); }
 };
 
-// Gestione eventi dai modali globali
+// --- GESTIONE EVENTI MODALI ---
+
 const onChatCreated = (newConvId) => {
   showSearchModal.value = false;
   router.push(`/conversations/${newConvId}`);
@@ -57,6 +55,7 @@ const onChatCreated = (newConvId) => {
 
 const onGroupCreated = (newGroupId) => {
   showCreateGroupModal.value = false;
+  // REQUIREMENT 3: Redirect alla chat del gruppo appena creato
   router.push(`/conversations/${newGroupId}`);
 };
 
@@ -175,38 +174,14 @@ watch(() => route.name, () => {
 
 <style>
 /* Stili Globali */
-.feather { 
-  width: 16px; height: 16px; vertical-align: text-bottom; margin-right: 8px; 
-}
-.sidebar .nav-link {
-  color: #333;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  margin: 0 10px;
-}
-.sidebar .nav-link:hover {
-  background-color: #e9ecef;
-}
-.sidebar .nav-link.active {  
-  color: #0d6efd; 
-  background-color: #e7f1ff;
-  font-weight: 500; 
-}
-.edit-btn {
-  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-}
+.feather { width: 16px; height: 16px; vertical-align: text-bottom; margin-right: 8px; }
+.sidebar .nav-link { color: #333; padding: 0.5rem 1rem; border-radius: 4px; margin: 0 10px; }
+.sidebar .nav-link:hover { background-color: #e9ecef; }
+.sidebar .nav-link.active { color: #0d6efd; background-color: #e7f1ff; font-weight: 500; }
+.edit-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
 .edit-btn svg { margin: 0; width: 12px; height: 12px; }
-
-/* Sidebar altezza full per posizionare il footer in basso */
-.sidebar-sticky {
-  height: calc(100vh - 48px);
-  overflow-y: auto;
-}
-
+.sidebar-sticky { height: calc(100vh - 48px); overflow-y: auto; }
 @media (max-width: 767.98px) {
-  #sidebarMenu.collapse.show {
-    position: fixed; top: 48px; left: 0; right: 0; bottom: 0;
-    z-index: 1000; background-color: #fff;
-  }
+  #sidebarMenu.collapse.show { position: fixed; top: 48px; left: 0; right: 0; bottom: 0; z-index: 1000; background-color: #fff; }
 }
 </style>

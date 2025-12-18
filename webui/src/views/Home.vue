@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'; 
+import { ref, onMounted, onUnmounted } from 'vue'; 
 import { useRouter } from 'vue-router'; 
 import { apiGetMyConversations } from '@/services/api.js'; 
 import ErrorMsg from '@/components/ErrorMsg.vue'; 
@@ -10,16 +10,25 @@ const loading = ref(true);
 const errorMsg = ref(''); 
 const router = useRouter(); 
 
-const loadConversations = async () => {
+let pollingInterval = null; // Variabile per l'intervallo
+
+// Modificata per accettare il parametro background
+const loadConversations = async (isBackground = false) => {
   try {
-    loading.value = true;
-    errorMsg.value = '';
+    // Mostra lo spinner solo se NON è un aggiornamento in background
+    if (!isBackground) {
+      loading.value = true;
+      errorMsg.value = '';
+    }
+    
     const data = await apiGetMyConversations();
     conversations.value = data.conversations || [];
   } catch (err) {
-    errorMsg.value = err.message;
+    // In background evitiamo di mostrare errori bloccanti se la rete salta per un secondo
+    if (!isBackground) errorMsg.value = err.message;
+    console.error("Polling error:", err);
   } finally {
-    loading.value = false;
+    if (!isBackground) loading.value = false;
   }
 };
 
@@ -48,7 +57,16 @@ const formatSnippet = (snippet) => {
 };
 
 onMounted(() => {
-  loadConversations();
+  loadConversations(); // Caricamento immediato
+  
+  // Polling ogni 4 secondi per vedere nuovi messaggi senza refresh manuale
+  pollingInterval = setInterval(() => {
+    loadConversations(true); 
+  }, 4000);
+});
+
+onUnmounted(() => {
+  if (pollingInterval) clearInterval(pollingInterval);
 });
 </script>
 
