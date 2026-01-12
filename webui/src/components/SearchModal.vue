@@ -4,9 +4,7 @@ import { apiSearchUsers, apiStartConversation } from '@/services/api.js';
 import ErrorMsg from '@/components/ErrorMsg.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
-// Definiamo i 'props' (dati in ingresso) e 'emits' (eventi in uscita)
-// Il genitore (Home.vue) usa 'show' per aprirlo
-// e ascolta '@close' e '@chat-created'
+// Props ed Eventi
 defineProps({
   show: Boolean
 });
@@ -33,9 +31,6 @@ const handleSearch = async () => {
     // Chiama l'API
     const data = await apiSearchUsers(searchQuery.value);
     
-    // --- CORREZIONE IMPORTANTE ---
-    // Il nostro backend (correttamente) restituisce { "users": [...] }
-    // Dobbiamo estrarre l'array 'data.users'
     searchResults.value = data.users || []; 
     
     if (searchResults.value.length === 0) {
@@ -55,11 +50,10 @@ const handleStartChat = async (userId) => {
   
   try {
 
-    // 1. Chiama l'API e ASPETTA la risposta
+    // Chiama l'API e ASPETTA la risposta
     const newConversation = await apiStartConversation(userId);
     
-    // 2. Successo! Avvisa il genitore (Home.vue)
-    //    e passagli l'ID della chat appena creata.
+    // Successo -> avvisa il genitore (Home.vue) e passagli l'ID della chat appena creata.
     emit('chat-created', newConversation.id);
     
     
@@ -72,10 +66,7 @@ const handleStartChat = async (userId) => {
 </script>
 
 <template>
-  <!-- 
-    'v-if' è cruciale. Il componente non esiste nel DOM
-    finché 'show' non è 'true'.
-  -->
+
   <div v-if="show" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content card">
       <div class="card-header d-flex justify-content-between align-items-center">

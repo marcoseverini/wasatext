@@ -25,10 +25,7 @@ type AppDatabase interface {
 	StartConversation(requestingUserID string, targetUserID string) (string, error)
 	GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error)
 	GetConversationSummaries(userID string) ([]ConversationSummary, error)
-
-	// Modificata: accetta text e photoUrl opzionali
 	SendMessage(senderId string, convId string, text string, photoUrl string, replyToMsgId *string) (Message, error)
-
 	DeleteMessage(requestingUserID string, messageID string) error
 	ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error)
 	AddReaction(requestingUserID string, messageID string, emoji string) (Reaction, error)
@@ -85,7 +82,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error creating conversation_members table: %w", err)
 	}
 
-	// Messages Table (AGGIORNATA: text e photoUrl invece di content)
+	// Messages Table
 	sqlStmt = `CREATE TABLE IF NOT EXISTS messages (
 		id TEXT NOT NULL PRIMARY KEY,
 		conversationId TEXT NOT NULL,

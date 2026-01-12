@@ -46,7 +46,7 @@ func (db *appdbimpl) SendMessage(senderId string, convId string, text string, ph
 		replyToMsgId = nil
 	}
 
-	// Insert Message (NUOVE COLONNE)
+	// Insert Message
 	newMsgId := "msg-" + uuid.New().String()
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 
@@ -99,7 +99,6 @@ func (db *appdbimpl) DeleteMessage(requestingUserID string, messageID string) er
 	return nil
 }
 
-// Forward: Ora copia sia testo che foto
 func (db *appdbimpl) ForwardMessage(requestingUserID string, targetConvId string, originalMessageId string) (Message, error) {
 
 	var originalMsg struct {

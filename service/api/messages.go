@@ -90,8 +90,6 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 	_ = json.NewEncoder(w).Encode(newMessage)
 }
 
-// forwardMessage, deleteMessage e reactions restano simili al vecchio ma per completezza:
-
 func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	userID, err := rt.getUserIdFromAuth(r)
 	if err != nil {

@@ -27,7 +27,7 @@ axios.interceptors.response.use(
     }
 );
 
-// --- FUNZIONI API ---
+// FUNZIONI API
 
 export async function apiLogin(username) {
     const response = await axios.post('/session', { username });
@@ -56,7 +56,6 @@ export async function apiSearchUsers(username) {
     return response.data;
 }
 
-// Fondamentale per l'inoltro a nuovi utenti
 export async function apiStartConversation(userId) {
     const response = await axios.post('/conversations', { userId });
     return response.data;
@@ -67,7 +66,6 @@ export async function apiGetConversation(conversationId) {
     return response.data;
 }
 
-// AGGIORNATA: Supporta invio congiunto di testo e foto
 export async function apiSendMessage(conversationId, text, photoUrl, replyToMsgId = null) {
     const payload = {};
     if (replyToMsgId) payload.replyToMsgId = replyToMsgId;
@@ -128,7 +126,6 @@ export async function apiSetGroupPhoto(convId, photoUrl) {
     return response.data;
 }
 
-// (Opzionale: manteniamo la vecchia forward per compatibilità, ma non la useremo nel modale)
 export async function apiForwardMessage(targetConvId, originalMsgId) {
     const response = await axios.post(`/conversations/${targetConvId}/forwarded_messages`, { originalMessageId: originalMsgId });
     return response.data;

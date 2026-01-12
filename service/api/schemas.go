@@ -125,6 +125,7 @@ type SendMessageRequest struct {
 type ForwardMessageRequest struct {
 	OriginalMessageId InternalID `json:"originalMessageId"`
 }
+
 type CommentMessageRequest struct {
 	Emoji Emoji `json:"emoji"`
 }

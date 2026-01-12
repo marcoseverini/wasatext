@@ -67,7 +67,6 @@ func (db *appdbimpl) checkGroupAccess(tx *sql.Tx, requestingUserID string, convI
             (SELECT isGroup FROM conversations WHERE id = ?) AS isGroup,
             EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?) AS isMember`
 
-	// Scegle se usare la transazione (tx) o la connessione (db.c)
 	var row *sql.Row
 	if tx != nil {
 		row = tx.QueryRow(query, convId, convId, requestingUserID)

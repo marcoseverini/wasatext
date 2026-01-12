@@ -20,13 +20,13 @@ type Conversation struct {
 	Name                   string    `json:"name"`
 	PhotoURL               string    `json:"photoUrl,omitempty"`
 	IsGroup                bool      `json:"isGroup"`
-	LatestMessageSnippet   string    `json:"latestMessageSnippet,omitempty"`   // <--- AGGIUNTO
-	LatestMessageTimestamp string    `json:"latestMessageTimestamp,omitempty"` // <--- AGGIUNTO
+	LatestMessageSnippet   string    `json:"latestMessageSnippet,omitempty"`
+	LatestMessageTimestamp string    `json:"latestMessageTimestamp,omitempty"`
 	Members                []User    `json:"members"`
 	Messages               []Message `json:"messages"`
 }
 
-// Struttura Messaggio AGGIORNATA
+// Struttura Messaggio
 type Message struct {
 	ID           string     `json:"id"`
 	Sender       User       `json:"sender"`

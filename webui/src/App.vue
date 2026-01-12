@@ -46,7 +46,6 @@ const fetchMyProfile = async () => {
   } catch (e) { console.error(e); }
 };
 
-// --- GESTIONE EVENTI MODALI ---
 
 const onChatCreated = (newConvId) => {
   showSearchModal.value = false;
@@ -55,7 +54,7 @@ const onChatCreated = (newConvId) => {
 
 const onGroupCreated = (newGroupId) => {
   showCreateGroupModal.value = false;
-  // REQUIREMENT 3: Redirect alla chat del gruppo appena creato
+  // Redirect alla chat del gruppo appena creato
   router.push(`/conversations/${newGroupId}`);
 };
 

@@ -70,17 +70,17 @@ func (db *appdbimpl) StartConversation(requestingUserID string, targetUserID str
 func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUserID string) (Conversation, error) {
 	var conversation Conversation
 
-	// 1. Verifica Membro
+	// Verifica Membro
 	var isMember bool
 	err := db.c.QueryRow("SELECT EXISTS(SELECT 1 FROM conversation_members WHERE conversationId = ? AND userId = ?)", conversationID, requestingUserID).Scan(&isMember)
 	if err != nil || !isMember {
 		return conversation, fmt.Errorf("user not member or conversation not found")
 	}
 
-	// 2. Aggiorna stato lettura
+	// Aggiorna stato lettura
 	_, _ = db.c.Exec(`UPDATE messages SET status = 'read' WHERE conversationId = ? AND senderId != ? AND status != 'read'`, conversationID, requestingUserID)
 
-	// 3. Dettagli base conversazione
+	// Dettagli base conversazione
 	var nullableName sql.NullString
 	var nullablePhoto sql.NullString
 	err = db.c.QueryRow("SELECT id, name, photoUrl, isGroup FROM conversations WHERE id = ?", conversationID).
@@ -106,7 +106,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		}
 	}
 
-	// 4. Recupera Membri
+	// Recupera Membri
 	rows, err := db.c.Query(`SELECT u.id, u.username, u.photoUrl FROM users u JOIN conversation_members cm ON u.id = cm.userId WHERE cm.conversationId = ?`, conversationID)
 	if err != nil {
 		return conversation, fmt.Errorf("could not get conversation members: %w", err)
@@ -128,7 +128,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 	}
 	conversation.Members = members
 
-	// 5. Recupera Messaggi
+	// Recupera Messaggi
 	msgRows, err := db.c.Query(`
         SELECT m.id, COALESCE(m.text, ''), COALESCE(m.photoUrl, ''), m.timestamp, m.replyToMsgId, m.status,
                u.id as senderId, u.username as senderUsername, u.photoUrl as senderPhoto
@@ -168,7 +168,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		return conversation, err
 	}
 
-	// 6. Recupera Reazioni
+	// Recupera Reazioni
 	reactRows, err := db.c.Query(`
         SELECT r.id, r.messageId, r.emoji,
             u.id as reactorId, u.username as reactorUsername, u.photoUrl as reactorPhoto
@@ -208,7 +208,7 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 		conversation.Messages = []Message{}
 	}
 
-	// --- AGGIUNTO: Popoliamo i campi Snippet e Timestamp per coerenza con l'API ---
+	// Popoliamo i campi Snippet e Timestamp per coerenza con l'API
 	if len(messages) > 0 {
 		lastMsg := messages[0]
 		conversation.LatestMessageTimestamp = lastMsg.Timestamp
@@ -218,7 +218,6 @@ func (db *appdbimpl) GetConversationDetails(conversationID string, requestingUse
 			conversation.LatestMessageSnippet = "📷 [Foto]"
 		}
 	}
-	// -------------------------------------------------------------------------------
 
 	return conversation, nil
 }
@@ -228,7 +227,7 @@ func (db *appdbimpl) GetConversationSummaries(userID string) ([]ConversationSumm
 
 	var summaries []ConversationSummary
 
-	// QUERY AGGIORNATA: Genera l'anteprima (snippet) usando text o photoUrl
+	// Genera l'anteprima (snippet) usando text o photoUrl
 	// Se c'è del testo, mostriamo quello.
 	// Se c'è solo una foto, mostriamo "[Foto]".
 	// Se non c'è nulla, stringa vuota.

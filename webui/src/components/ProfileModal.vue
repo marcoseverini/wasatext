@@ -18,11 +18,10 @@ const loading = ref(false);
 const errorMsg = ref('');
 const successMsg = ref('');
 
-// Watchers
 watch(() => props.username, (val) => newUsername.value = val);
 watch(() => props.photoUrl, (val) => newPhotoUrl.value = val || '');
 
-// --- GESTIONE UPLOAD FILE (BASE64) ---
+// gestione upload foto
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -35,13 +34,12 @@ const handleFileUpload = (event) => {
 
   const reader = new FileReader();
   reader.onload = (e) => {
-    // Questo è il "trucco": il file diventa una stringa lunghissima
     newPhotoUrl.value = e.target.result; 
   };
   reader.readAsDataURL(file);
 };
 
-// --- RIMOZIONE FOTO ---
+// rimozione foto
 const removePhoto = () => {
   newPhotoUrl.value = '';
   // Resetta anche l'input file se presente nel DOM
@@ -58,13 +56,13 @@ const handleSave = async () => {
     let updatedName = props.username;
     let updatedPhoto = props.photoUrl;
 
-    // 1. Aggiorna Username
+    // Aggiorna Username
     if (newUsername.value !== props.username) {
       await apiSetMyUserName(newUsername.value);
       updatedName = newUsername.value;
     }
 
-    // 2. Aggiorna Foto
+    // Aggiorna Foto
     if (newPhotoUrl.value !== props.photoUrl) {
       await apiSetMyPhoto(newPhotoUrl.value);
       updatedPhoto = newPhotoUrl.value;

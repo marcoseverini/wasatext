@@ -29,7 +29,7 @@ const addingMemberId = ref(null);
 const loadingLeave = ref(false);
 const errorMsg = ref('');
 
-// --- GESTIONE NOME GRUPPO ---
+// Gestione nome gruppo
 const startEditName = () => {
   newGroupName.value = props.conversation.name;
   isEditingName.value = true;
@@ -49,7 +49,7 @@ const saveGroupName = async () => {
   }
 };
 
-// --- GESTIONE FOTO GRUPPO ---
+// Gestione foto gruppo
 const handleFileUpload = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -76,7 +76,7 @@ const handleFileUpload = async (event) => {
   reader.readAsDataURL(file);
 };
 
-// --- GESTIONE MEMBRI ---
+// Gestione aggiunta membri
 const handleSearch = async () => {
   if (searchQuery.value.length < 1) return;
   loadingSearch.value = true;
@@ -249,7 +249,7 @@ const handleLeaveGroup = async () => {
 .search-results { max-height: 150px; overflow-y: auto; }
 .feather { width: 16px; height: 16px; vertical-align: middle; }
 
-/* FIX CENTRATURA ICONA FOTOCAMERA */
+
 .edit-photo-btn {
   display: flex !important;
   align-items: center !important;

@@ -42,14 +42,13 @@ const handleSearch = async () => {
     // Set degli ID già selezionati nel carrello
     const selectedIds = new Set(selectedMembers.value.map(m => m.id));
     
-    // --- MODIFICA QUI ---
     // Filtriamo:
     // 1. Utenti già selezionati (!selectedIds.has)
     // 2. Me stesso (user.id !== myId)
     searchResults.value = data.users.filter(user => 
       !selectedIds.has(user.id) && user.id !== myId
     ) || [];
-    // --------------------
+    
     
     if (searchResults.value.length === 0) {
       errorMsg.value = "Nessun utente trovato.";

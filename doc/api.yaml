@@ -826,9 +826,7 @@ components:
       type: object
       properties:
         groupName:
-          description: Nome del gruppo.
-          allOf:
-            - $ref: '#/components/schemas/GroupName'
+          $ref: '#/components/schemas/GroupName'
         memberIds:
           description: ID dei membri.
           type: array

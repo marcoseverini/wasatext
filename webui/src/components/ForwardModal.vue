@@ -36,7 +36,7 @@ onMounted(async () => {
 });
 
 const handleSearch = async () => {
-  // MODIFICA QUI: Ora basta 1 carattere per cercare
+  
   if (searchQuery.value.trim().length < 1) return;
   
   loading.value = true;

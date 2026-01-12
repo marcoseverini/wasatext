@@ -11,9 +11,6 @@ import (
 // GET /users
 func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
-	// --- MODIFICA QUI ---
-	// Usiamo '_' invece di 'userID' perché non ci serve più la variabile per filtrare,
-	// ma dobbiamo comunque chiamare la funzione per garantire che l'utente sia autenticato.
 	_, err := rt.getUserIdFromAuth(r)
 	if err != nil {
 		rt.sendErrorResponse(w, http.StatusInternalServerError, err.Error())

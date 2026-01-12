@@ -30,7 +30,6 @@ type _router struct {
 }
 
 // Costruttore del router API
-// Costruttore del router API
 func New(cfg Config) (Router, error) {
 
 	// Validazione delle dipendenze
@@ -53,7 +52,7 @@ func New(cfg Config) (Router, error) {
 		db:         cfg.Database,
 	}
 
-	// --- ROTTE API (Backend) ---
+	// ROTTE API (Backend)
 	router.POST("/session", rt.doLogin)
 	router.PUT("/settings/username", rt.authMiddleware(rt.setMyUserName))
 	router.PUT("/settings/photo", rt.authMiddleware(rt.setMyPhoto))
@@ -72,26 +71,26 @@ func New(cfg Config) (Router, error) {
 	router.POST("/conversations/:convId/members", rt.authMiddleware(rt.addToGroup))
 	router.DELETE("/conversations/:convId/members/me", rt.authMiddleware(rt.leaveGroup))
 
-	// --- ROTTE STATICHE (Frontend) ---
+	// ROTTE STATICHE (Frontend)
 	// Queste servono i file generati da 'yarn build' nella cartella webui/dist
 
-	// 1. Serve la Index (Home Page)
+	// Serve la Index (Home Page)
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.ServeFile(w, r, "webui/dist/index.html")
 	})
 
-	// 2. Serve i file Javascript e CSS (cartella assets)
+	// Serve i file Javascript e CSS (cartella assets)
 	router.ServeFiles("/assets/*filepath", http.Dir("webui/dist/assets"))
 
-	// 3. Serve Bootstrap (che hai in public/bootstrap e finisce in dist/bootstrap)
+	// Serve Bootstrap (che hai in public/bootstrap e finisce in dist/bootstrap)
 	router.ServeFiles("/bootstrap/*filepath", http.Dir("webui/dist/bootstrap"))
 
-	// 4. Serve l'icona SVG (feather sprite)
+	// Serve l'icona SVG (feather sprite)
 	router.GET("/feather-sprite-v4.29.0.svg", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.ServeFile(w, r, "webui/dist/feather-sprite-v4.29.0.svg")
 	})
 
-	// 5. Serve la Favicon (opzionale)
+	// Serve la Favicon (opzionale)
 	router.GET("/favicon.ico", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.ServeFile(w, r, "webui/dist/favicon.ico")
 	})
@@ -104,7 +103,6 @@ func (rt *_router) Handler() http.Handler {
 	return rt.router
 }
 
-// Per ora non fa nulla, ma potrebbe chiudere connessioni in futuro
 func (rt *_router) Close() error {
 	return nil
 }
