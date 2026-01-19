@@ -1,21 +1,26 @@
-FROM golang:1.23 AS builder
+### Definisco l'immagine temporanea di build basata su Go (pesante)
+FROM golang:1.23 AS builder 
 
-### Copy Go code
+### Imposto la cartella di lavoro all'interno dell'immagine temporanea di build
 WORKDIR /src/
+
+### Copio il codice sorgente dell'applicazione Go nell'immagine temporanea di build
 COPY . .
 
-### Build executables
+### Compilo l'applicazione Go nell'immagine temporanea di build
 RUN go build -o /app/webapi ./cmd/webapi
 
-### Create final container
+
+
+### Definisco l'immagine finale basata su Debian slim (leggera)
 FROM debian:bookworm-slim
 
-### Inform Docker about which port is used
+### Espongo la porta su cui gira l'applicazione 
 EXPOSE 3000
 
-### Copy the build executable from the builder image
+### Copio l'eseguibile dell'applicazione dall'immagine temporanea di build all'immagine finale
 WORKDIR /app/
 COPY --from=builder /app/webapi ./
 
-### Executable command
+### Quando il container parte, eseguo l'applicazione tramite questo comando
 CMD ["/app/webapi"]

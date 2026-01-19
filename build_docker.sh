@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Costruisci le immagini Docker
+# Costruisci le immagini Docker partendo dai Dockerfile 
 if [ "$1" == "front" ]; then
     echo "Building frontend..."
     sudo docker build -t wasa-text-frontend:latest -f Dockerfile.frontend .

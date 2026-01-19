@@ -1,19 +1,26 @@
+### Definisco l'immagine temporanea di build basata su Node.js (pesante)
 FROM node:20-slim AS builder
 
-### Enable Corepack for Yarn
+### Attivo corepack per abilitare Yarn (il package manager del progetto) nell'immagine temporanea di build
 RUN corepack enable
 
-### Copy Vue.js code
+### Imposto la cartella di lavoro all'interno dell'immagine temporanea di build
 WORKDIR /app
+
+### Copio il codice sorgente dell'applicazione Vue.js nell'immagine temporanea di build
 COPY webui webui
 
-### Build Vue.js into plain HTML/CSS/JS
+### Scarico le dipendenze necessarie per l'applicazione Vue.js nell'immagine temporanea di build
 WORKDIR /app/webui
 RUN yarn install
+
+### Compilo l'applicazione Vue.js nell'immagine temporanea di build
 RUN yarn run build
 
-### Create final container
+
+
+### Definisco l'immagine finale basata su Nginx (leggera)
 FROM nginx:stable
 
-### Copy the (built) app from the builder image
+### Copio i file compilati dell'applicazione Vue.js dall'immagine temporanea di build all'immagine finale
 COPY --from=builder /app/webui/dist /usr/share/nginx/html
