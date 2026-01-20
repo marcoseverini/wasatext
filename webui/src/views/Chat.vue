@@ -70,7 +70,8 @@ const scrollToBottom = () => {
   });
 };
 
-onMounted(async () => { 
+// polling
+onMounted(async () => {
   await refreshConversation(true);
   scrollToBottom();
   pollingInterval = setInterval(() => refreshConversation(false), 3000);
